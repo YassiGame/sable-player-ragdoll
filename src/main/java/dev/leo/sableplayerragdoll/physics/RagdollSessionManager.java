@@ -104,7 +104,8 @@ public final class RagdollSessionManager {
 
    public static boolean canManualDismount(ServerLevel level, ServerSubLevel subLevel) {
       CompoundTag tag = subLevel.getUserDataTag();
-      return tag != null && level.getGameTime() - tag.getLong(START_TICK_KEY) >= (long) scaledRagdollDurationTicks(tag);
+      return tag != null && (!RagdollSettings.expireAfterDuration()
+            || level.getGameTime() - tag.getLong(START_TICK_KEY) >= (long) scaledRagdollDurationTicks(tag));
    }
 
    public static void tickActiveRagdolls(ServerLevel level) {
@@ -145,13 +146,14 @@ public final class RagdollSessionManager {
       if (customExpired != null) {
          return customExpired;
       }
-      if (elapsed >= (long) scaledRagdollDurationTicks(tag)) {
+      if (RagdollSettings.expireAfterDuration() && elapsed >= (long) scaledRagdollDurationTicks(tag)) {
          return true;
       }
-      if (elapsed >= (long) scaledSafetyLifetimeTicks(tag)) {
+      if (RagdollSettings.expireAfterSafetyTimeout() && elapsed >= (long) scaledSafetyLifetimeTicks(tag)) {
          return true;
       }
-      return elapsed >= (long) scaledMinTicksBeforeSpeedRelease(tag)
+      return RagdollSettings.expireWhenSlow()
+            && elapsed >= (long) scaledMinTicksBeforeSpeedRelease(tag)
             && sampleSpeedMetersPerSecond(physicsSystem, subLevel) <= RagdollSettings.releaseSpeedThreshold();
    }
 
@@ -205,10 +207,10 @@ public final class RagdollSessionManager {
          return "expired";
       }
       long elapsed = level.getGameTime() - tag.getLong(START_TICK_KEY);
-      if (elapsed >= (long) scaledSafetyLifetimeTicks(tag)) {
+      if (RagdollSettings.expireAfterSafetyTimeout() && elapsed >= (long) scaledSafetyLifetimeTicks(tag)) {
          return "safety timeout";
       }
-      return elapsed >= (long) scaledRagdollDurationTicks(tag) ? "ride duration" : "slowed down";
+      return RagdollSettings.expireAfterDuration() && elapsed >= (long) scaledRagdollDurationTicks(tag) ? "ride duration" : "slowed down";
    }
 
    private static int scaledRagdollDurationTicks(CompoundTag tag) {

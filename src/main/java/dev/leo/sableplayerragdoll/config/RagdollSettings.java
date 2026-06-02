@@ -6,8 +6,11 @@ public final class RagdollSettings {
    private static double maxVelocityDelta = 120.0;
    private static double maxFlingSpeed = 128.0;
    private static double ragdollMaxLaunchSpeed = 128.0;
+   private static boolean expireAfterDuration = false;
    private static int ragdollDurationTicks = 40;
+   private static boolean expireAfterSafetyTimeout = false;
    private static int step1BodyLifetimeTicks = 200;
+   private static boolean expireWhenSlow = false;
    private static double releaseSpeedThreshold = 0.1;
    private static int cooldownTicks = 60;
    private static boolean affectCreative = true;
@@ -32,11 +35,20 @@ public final class RagdollSettings {
    public static double ragdollMaxLaunchSpeed() { return ragdollMaxLaunchSpeed; }
    public static void setRagdollMaxLaunchSpeed(double v) { ragdollMaxLaunchSpeed = Math.max(0.5, v); }
 
+   public static boolean expireAfterDuration() { return expireAfterDuration; }
+   public static void setExpireAfterDuration(boolean v) { expireAfterDuration = v; }
+
    public static int ragdollDurationTicks() { return ragdollDurationTicks; }
    public static void setRagdollDurationTicks(int v) { ragdollDurationTicks = Math.max(1, v); }
 
+   public static boolean expireAfterSafetyTimeout() { return expireAfterSafetyTimeout; }
+   public static void setExpireAfterSafetyTimeout(boolean v) { expireAfterSafetyTimeout = v; }
+
    public static int step1BodyLifetimeTicks() { return step1BodyLifetimeTicks; }
    public static void setStep1BodyLifetimeTicks(int v) { step1BodyLifetimeTicks = Math.max(20, v); }
+
+   public static boolean expireWhenSlow() { return expireWhenSlow; }
+   public static void setExpireWhenSlow(boolean v) { expireWhenSlow = v; }
 
    public static double releaseSpeedThreshold() { return releaseSpeedThreshold; }
    public static void setReleaseSpeedThreshold(double v) { releaseSpeedThreshold = Math.max(0.0, v); }

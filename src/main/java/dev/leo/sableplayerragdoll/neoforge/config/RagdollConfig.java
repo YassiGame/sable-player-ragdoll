@@ -52,12 +52,21 @@ public final class RagdollConfig {
       BUILDER.translation("sable_player_ragdoll.configuration.despawn").comment("When player ragdolls expire.").push("despawn");
    }
 
+   public static final BooleanValue EXPIRE_AFTER_DURATION = BUILDER.translation("sable_player_ragdoll.configuration.expire_after_duration")
+      .comment("Expire player ragdolls after the configured duration. If all despawn toggles are off, player ragdolls never expire automatically.")
+      .define("expireAfterDuration", false);
    public static final IntValue RAGDOLL_DURATION_TICKS = BUILDER.translation("sable_player_ragdoll.configuration.player_ragdoll_duration")
       .comment("Ticks after launch before a player ragdoll expires and the player is unseated.")
       .defineInRange("ragdollDurationTicks", 40, 5, 600);
+   public static final BooleanValue EXPIRE_WHEN_SLOW = BUILDER.translation("sable_player_ragdoll.configuration.expire_when_slow")
+      .comment("Expire player ragdolls after they touch down and slow below the release speed threshold.")
+      .define("expireWhenSlow", false);
    public static final DoubleValue RELEASE_SPEED_THRESHOLD = BUILDER.translation("sable_player_ragdoll.configuration.release_speed_threshold")
       .comment("Expire after touchdown only once the ragdoll slows below this speed (m/s).")
       .defineInRange("releaseSpeedThreshold", 0.1, 0.0, 32.0);
+   public static final BooleanValue EXPIRE_AFTER_SAFETY_TIMEOUT = BUILDER.translation("sable_player_ragdoll.configuration.expire_after_safety_timeout")
+      .comment("Force-expire player ragdolls after the safety timeout.")
+      .define("expireAfterSafetyTimeout", false);
    public static final IntValue STEP1_BODY_LIFETIME_TICKS = BUILDER.translation("sable_player_ragdoll.configuration.safety_timeout")
       .comment("Hard safety limit: force expiry if the ragdoll still exists after this many ticks.")
       .defineInRange("step1BodyLifetimeTicks", 200, 20, 2400);
@@ -100,8 +109,11 @@ public final class RagdollConfig {
       RagdollSettings.setMaxFlingSpeed((Double) MAX_FLING_SPEED.get());
       RagdollSettings.setRagdollMaxLaunchSpeed((Double) RAGDOLL_MAX_LAUNCH_SPEED.get());
       RagdollSettings.setAutoSeatOnTrigger((Boolean) AUTO_SEAT_ON_TRIGGER.get());
+      RagdollSettings.setExpireAfterDuration((Boolean) EXPIRE_AFTER_DURATION.get());
       RagdollSettings.setRagdollDurationTicks((Integer) RAGDOLL_DURATION_TICKS.get());
+      RagdollSettings.setExpireWhenSlow((Boolean) EXPIRE_WHEN_SLOW.get());
       RagdollSettings.setStep1BodyLifetimeTicks((Integer) STEP1_BODY_LIFETIME_TICKS.get());
+      RagdollSettings.setExpireAfterSafetyTimeout((Boolean) EXPIRE_AFTER_SAFETY_TIMEOUT.get());
       RagdollSettings.setReleaseSpeedThreshold((Double) RELEASE_SPEED_THRESHOLD.get());
       RagdollSettings.setDebugLogging((Boolean) DEBUG_LOGGING.get());
    }
