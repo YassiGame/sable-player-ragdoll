@@ -14,6 +14,7 @@ import dev.leo.sableplayerragdoll.SablePlayerRagdollBootstrap;
 import dev.leo.sableplayerragdoll.api.PlayerlessRagdollSession;
 import dev.leo.sableplayerragdoll.api.RagdollAPI;
 import dev.leo.sableplayerragdoll.block.RagdollBlocks;
+import dev.leo.sableplayerragdoll.block.RagdollPartBlock;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntities;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity;
 import dev.leo.sableplayerragdoll.entity.RagdollDollEntity;
@@ -139,12 +140,20 @@ public final class SablePlayerRagdollNeoForge {
    }
 
    private static void onBlockBreak(BlockEvent.BreakEvent event) {
+      if (event.getState().getBlock() instanceof RagdollPartBlock) {
+         event.setCanceled(true);
+         return;
+      }
       if (event.getPlayer() instanceof ServerPlayer player && isRagdolled(player.serverLevel(), player)) {
          event.setCanceled(true);
       }
    }
 
    private static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+      if (event.getLevel().getBlockState(event.getPos()).getBlock() instanceof RagdollPartBlock) {
+         event.setCanceled(true);
+         return;
+      }
       if (isRagdolled(event)) event.setCanceled(true);
    }
 

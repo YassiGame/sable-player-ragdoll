@@ -5,7 +5,9 @@ import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
 import dev.ryanhcode.sable.api.block.BlockSubLevelCollisionShape;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.RenderShape;
@@ -64,6 +66,16 @@ public final class RagdollPartBlock extends Block implements EntityBlock, BlockS
    @Override
    public VoxelShape getSubLevelCollisionShape(BlockGetter level, BlockState state) {
       return partShape(state);
+   }
+
+   @Override
+   public boolean canEntityDestroy(BlockState state, BlockGetter level, BlockPos pos, Entity entity) {
+      return false;
+   }
+
+   @Override
+   public boolean canDropFromExplosion(BlockState state, BlockGetter level, BlockPos pos, Explosion explosion) {
+      return false;
    }
 
    private static VoxelShape partShape(BlockState state) {

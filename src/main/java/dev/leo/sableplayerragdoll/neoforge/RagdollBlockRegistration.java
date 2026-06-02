@@ -27,7 +27,7 @@ public final class RagdollBlockRegistration {
       "ragdoll_seat", () -> new RagdollSeatBlock(Properties.of().mapColor(MapColor.NONE).strength(2.0F).noOcclusion().noLootTable())
    );
    public static final DeferredBlock<RagdollPartBlock> RAGDOLL_PART = BLOCKS.register(
-      "ragdoll_part", () -> new RagdollPartBlock(Properties.of().mapColor(MapColor.COLOR_GRAY).strength(2.0F).noOcclusion().noLootTable())
+      "ragdoll_part", () -> new RagdollPartBlock(Properties.of().mapColor(MapColor.COLOR_GRAY).strength(-1.0F, 3600000.0F).noOcclusion().noLootTable())
    );
    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RagdollPartBlockEntity>> RAGDOLL_PART_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
       "ragdoll_part", () -> BlockEntityType.Builder.of(RagdollPartBlockEntity::new, RAGDOLL_PART.get()).build(null)
