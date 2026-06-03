@@ -133,9 +133,11 @@ public final class RagdollRegistry {
       }
 
       boolean elytraPose = player.isFallFlying();
+      Vec3 deltaMovement = player.getDeltaMovement();
+      Vec3 knownMovement = player.getKnownMovement();
       Vector3d linear = elytraPose
-         ? clampRagdollLaunchVelocity(toMetersPerSecond(player.getDeltaMovement()))
-         : withManualKick(clampRagdollLaunchVelocity(toMetersPerSecond(new Vec3(player.getDeltaMovement().x, 0, player.getDeltaMovement().z))));
+         ? clampRagdollLaunchVelocity(toMetersPerSecond(deltaMovement))
+         : withManualKick(clampRagdollLaunchVelocity(toMetersPerSecond(new Vec3(knownMovement.x, 0, knownMovement.z))));
       Vector3d angular = new Vector3d();
       ServerSubLevel body = launch(level, player, linear, angular, elytraPose, RagdollSettings.autoSeatOnTrigger());
       if (body != null) {
