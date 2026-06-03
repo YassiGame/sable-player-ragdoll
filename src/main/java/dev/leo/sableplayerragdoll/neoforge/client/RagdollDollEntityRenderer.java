@@ -9,15 +9,22 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider.Context;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.resources.DefaultPlayerSkin;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.resources.ResourceLocation;
 
 public final class RagdollDollEntityRenderer extends LivingEntityRenderer<RagdollDollEntity, PlayerModel<RagdollDollEntity>> {
+   private final PlayerModel<RagdollDollEntity> defaultModel;
+   private final PlayerModel<RagdollDollEntity> slimModel;
+
    public RagdollDollEntityRenderer(Context context) {
       super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5F);
+      this.defaultModel = this.model;
+      this.slimModel = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true);
    }
 
    @Override
    public void render(RagdollDollEntity entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+      this.model = this.skin(entity).model() == PlayerSkin.Model.SLIM ? this.slimModel : this.defaultModel;
       this.showOnly(entity.getBodyPart());
       this.model.crouching = false;
       super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
@@ -37,10 +44,14 @@ public final class RagdollDollEntityRenderer extends LivingEntityRenderer<Ragdol
 
    @Override
    public ResourceLocation getTextureLocation(RagdollDollEntity entity) {
+      return this.skin(entity).texture();
+   }
+
+   private PlayerSkin skin(RagdollDollEntity entity) {
       if (Minecraft.getInstance().getSkinManager() == null) {
-         return DefaultPlayerSkin.get(entity.getSkinProfile()).texture();
+         return DefaultPlayerSkin.get(entity.getSkinProfile());
       }
-      return Minecraft.getInstance().getSkinManager().getInsecureSkin(entity.getSkinProfile()).texture();
+      return Minecraft.getInstance().getSkinManager().getInsecureSkin(entity.getSkinProfile());
    }
 
    @Override

@@ -20,6 +20,7 @@ import net.minecraft.client.renderer.entity.layers.ElytraLayer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.DefaultPlayerSkin;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
@@ -27,7 +28,9 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer<RagdollPartBlockEntity>, RenderLayerParent<RagdollDollEntity, PlayerModel<RagdollDollEntity>> {
-   private final PlayerModel<RagdollDollEntity> model;
+   private final PlayerModel<RagdollDollEntity> defaultModel;
+   private final PlayerModel<RagdollDollEntity> slimModel;
+   private PlayerModel<RagdollDollEntity> model;
    private final RagdollArmorLayer armorLayer;
    private final ElytraLayer<RagdollDollEntity, PlayerModel<RagdollDollEntity>> elytraLayer;
    private final ItemRenderer itemRenderer;
@@ -36,7 +39,9 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
    private ResourceLocation currentTexture = DefaultPlayerSkin.getDefaultTexture();
 
    public RagdollPartBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
-      this.model = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false);
+      this.defaultModel = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false);
+      this.slimModel = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true);
+      this.model = this.defaultModel;
       this.armorLayer = new RagdollArmorLayer(
          this,
          new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
@@ -50,6 +55,8 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
    @Override
    public void render(RagdollPartBlockEntity blockEntity, float partialTick, PoseStack poseStack, MultiBufferSource buffer, int packedLight, int packedOverlay) {
       BodyPart bodyPart = blockEntity.bodyPart();
+      PlayerSkin skin = this.skin(blockEntity);
+      this.model = skin.model() == PlayerSkin.Model.SLIM ? this.slimModel : this.defaultModel;
       this.showOnly(bodyPart);
       poseStack.pushPose();
       poseStack.translate(0.5F, bodyPart.renderYOffset(), 0.5F);
@@ -60,7 +67,7 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
       this.centerVisiblePart(bodyPart);
       RagdollDollEntity entity = this.renderEntity(blockEntity);
       this.currentArmorPart = bodyPart;
-      this.currentTexture = this.texture(blockEntity);
+      this.currentTexture = skin.texture();
       VertexConsumer vertices = buffer.getBuffer(RenderType.entityTranslucent(this.currentTexture));
       this.model.renderToBuffer(poseStack, vertices, packedLight, OverlayTexture.NO_OVERLAY);
       this.armorLayer.render(poseStack, buffer, packedLight, entity, 0.0F, 0.0F, partialTick, 0.0F, 0.0F, 0.0F);
@@ -89,11 +96,11 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
       return this.currentTexture;
    }
 
-   private ResourceLocation texture(RagdollPartBlockEntity blockEntity) {
+   private PlayerSkin skin(RagdollPartBlockEntity blockEntity) {
       if (Minecraft.getInstance().getSkinManager() == null) {
-         return DefaultPlayerSkin.get(blockEntity.skinProfile()).texture();
+         return DefaultPlayerSkin.get(blockEntity.skinProfile());
       }
-      return Minecraft.getInstance().getSkinManager().getInsecureSkin(blockEntity.skinProfile()).texture();
+      return Minecraft.getInstance().getSkinManager().getInsecureSkin(blockEntity.skinProfile());
    }
 
    private RagdollDollEntity renderEntity(RagdollPartBlockEntity blockEntity) {
@@ -102,6 +109,7 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
          this.renderEntity = new RagdollDollEntity(minecraft.level);
       }
       if (this.renderEntity != null) {
+         this.renderEntity.setSkinProfile(blockEntity.skinProfile());
          this.renderEntity.setItemSlot(EquipmentSlot.MAINHAND, blockEntity.itemBySlot(EquipmentSlot.MAINHAND));
          this.renderEntity.setItemSlot(EquipmentSlot.OFFHAND, blockEntity.itemBySlot(EquipmentSlot.OFFHAND));
          this.renderEntity.setItemSlot(EquipmentSlot.HEAD, blockEntity.itemBySlot(EquipmentSlot.HEAD));
