@@ -3,6 +3,7 @@ package dev.leo.sableplayerragdoll.block.entity;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import dev.leo.sableplayerragdoll.physics.RagdollControlHelper;
+import dev.leo.sableplayerragdoll.physics.RagdollRegistry;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor;
 import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
@@ -122,6 +123,10 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
       }
 
       this.checkGrabbers();
+      if (this.bodyPart == BodyPart.HEAD && subLevel.getLevel() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+         RagdollRegistry.tryRestoreOnLoad(serverLevel, subLevel);
+      }
+
       for (GrabConstraint constraint : this.grabbers.values()) {
          constraint.physicsTick(subLevel);
       }
@@ -340,7 +345,7 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
          return this.serializedName;
       }
 
-      private static BodyPart byName(String name) {
+      public static BodyPart byName(String name) {
          for (BodyPart part : values()) {
             if (part.name().equals(name) || part.serializedName.equals(name)) {
                return part;

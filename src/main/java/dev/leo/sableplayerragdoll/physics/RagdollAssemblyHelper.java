@@ -151,7 +151,9 @@ public final class RagdollAssemblyHelper {
          BODY_PART_BY_SUBLEVEL.put(partId, bodyPart);
          HEAD_BY_PART.put(partId, headId);
       });
-      return new Doll(head.subLevel(), subLevels, constraints);
+      Map<BodyPart, UUID> partSubLevelIds = new EnumMap<>(BodyPart.class);
+      spawnedParts.forEach((bodyPart, spawnedPart) -> partSubLevelIds.put(bodyPart, spawnedPart.subLevel().getUniqueId()));
+      return new Doll(head.subLevel(), subLevels, partSubLevelIds, constraints);
    }
 
    public static @Nullable Doll spawn(ServerLevel level, ServerPlayer player, Vec3 baseCenter, Vec3 right) {
@@ -194,6 +196,32 @@ public final class RagdollAssemblyHelper {
    public static boolean isElytraRagdollPart(UUID subLevelId) {
       UUID headId = HEAD_BY_PART.get(subLevelId);
       return headId != null && ELYTRA_HEADS.contains(headId);
+   }
+
+   public static int restoreConstraints(ServerLevel level, Map<BodyPart, ServerSubLevel> subLevels) {
+      Map<BodyPart, SpawnedPart> parts = new EnumMap<>(BodyPart.class);
+      for (PartSpawn part : PARTS) {
+         ServerSubLevel subLevel = subLevels.get(part.bodyPart());
+         if (subLevel != null) {
+            parts.put(part.bodyPart(), new SpawnedPart(subLevel, Vec3.ZERO, subLevel.getPlot().getCenterBlock(), part.rightOffset()));
+         }
+      }
+
+      ServerSubLevel head = subLevels.get(BodyPart.HEAD);
+      if (head == null) {
+         return 0;
+      }
+
+      int constraints = attachSpawnedParts(level, parts, false);
+      List<ServerSubLevel> restoredSubLevels = parts.values().stream().map(SpawnedPart::subLevel).toList();
+      UUID headId = head.getUniqueId();
+      DOLL_PARTS_BY_HEAD.put(headId, restoredSubLevels.stream().map(ServerSubLevel::getUniqueId).toList());
+      parts.forEach((bodyPart, spawnedPart) -> {
+         UUID partId = spawnedPart.subLevel().getUniqueId();
+         BODY_PART_BY_SUBLEVEL.put(partId, bodyPart);
+         HEAD_BY_PART.put(partId, headId);
+      });
+      return constraints;
    }
 
    public static double launchVelocityScale(UUID subLevelId) {
@@ -431,7 +459,7 @@ public final class RagdollAssemblyHelper {
       }
    }
 
-   public record Doll(ServerSubLevel headSubLevel, List<ServerSubLevel> allSubLevels, int constraints) {
+   public record Doll(ServerSubLevel headSubLevel, List<ServerSubLevel> allSubLevels, Map<BodyPart, UUID> partSubLevelIds, int constraints) {
    }
 
    public record PartSpawn(String name, BodyPart bodyPart, double rightOffset, double upOffset, double yawOffset, double rollOffset) {

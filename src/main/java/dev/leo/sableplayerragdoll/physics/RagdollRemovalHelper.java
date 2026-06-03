@@ -22,6 +22,7 @@ public final class RagdollRemovalHelper {
    public static void removeRagdollSubLevel(SubLevelPhysicsSystem physicsSystem, ServerSubLevel subLevel) {
       if (subLevel != null && !subLevel.isRemoved()) {
          ServerLevel level = physicsSystem.getLevel();
+         RagdollSavedData.get(level).removeRagdoll(subLevel.getUniqueId());
          RagdollRegistry.wakePhysicsBody(physicsSystem, subLevel);
          removeLinkedRagdollParts(physicsSystem, subLevel);
          clearRagdollBlocksInWorld(subLevel, level);

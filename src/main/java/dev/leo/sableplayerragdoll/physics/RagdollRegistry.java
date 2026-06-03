@@ -3,12 +3,15 @@ package dev.leo.sableplayerragdoll.physics;
 import com.mojang.authlib.GameProfile;
 import dev.leo.sableplayerragdoll.SablePlayerRagdoll;
 import dev.leo.sableplayerragdoll.block.RagdollBlocks;
+import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
 import dev.leo.sableplayerragdoll.config.RagdollSettings;
 import dev.leo.sableplayerragdoll.api.PlayerlessDespawnRule;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
+import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3i;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,6 +34,7 @@ public final class RagdollRegistry {
    private static final double MANUAL_RAGDOLL_UPWARD_SPEED = 10.0;
    private static final Set<UUID> RAGDOLL_BODY_IDS = new HashSet<>();
    private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
+   private static final Set<UUID> RESTORED_HEADS = ConcurrentHashMap.newKeySet();
    private static boolean loggedFirstTick;
 
    private RagdollRegistry() {
@@ -98,6 +103,7 @@ public final class RagdollRegistry {
       }
 
       RAGDOLL_BODY_IDS.add(ragdollBody.getUniqueId());
+      RagdollSavedData.get(level).saveRagdoll(ragdollBody.getUniqueId(), doll.partSubLevelIds());
       RagdollDeferredSync.queuePlayerlessLaunch(ragdollBody, linear, angular, false, despawnRule);
       SablePlayerRagdoll.LOGGER.info(
          "[sable_player_ragdoll] queued playerless ragdoll {} at {} heading={} ({} parts, {} constraints)",
@@ -178,6 +184,38 @@ public final class RagdollRegistry {
       RAGDOLL_BODY_IDS.remove(subLevelId);
    }
 
+   public static void tryRestoreOnLoad(ServerLevel level, ServerSubLevel headSubLevel) {
+      UUID headId = headSubLevel.getUniqueId();
+      if (RESTORED_HEADS.contains(headId)) {
+         return;
+      }
+
+      Map<BodyPart, UUID> savedParts = RagdollSavedData.get(level).ragdoll(headId);
+      if (savedParts.isEmpty()) {
+         return;
+      }
+
+      SubLevelContainer container = SubLevelContainer.getContainer(level);
+      if (!(container instanceof ServerSubLevelContainer serverContainer)) {
+         return;
+      }
+
+      Map<BodyPart, ServerSubLevel> loadedParts = new java.util.EnumMap<>(BodyPart.class);
+      for (Map.Entry<BodyPart, UUID> entry : savedParts.entrySet()) {
+         SubLevel partSubLevel = serverContainer.getSubLevel(entry.getValue());
+         if (!(partSubLevel instanceof ServerSubLevel serverPart) || serverPart.isRemoved()) {
+            return;
+         }
+
+         loadedParts.put(entry.getKey(), serverPart);
+      }
+
+      int constraints = RagdollAssemblyHelper.restoreConstraints(level, loadedParts);
+      RESTORED_HEADS.add(headId);
+      SablePlayerRagdoll.LOGGER.info("[sable_player_ragdoll] restored playerless ragdoll {} ({} parts, {} constraints)",
+         shortId(headId), loadedParts.size(), constraints);
+   }
+
    static void dropFailed(SubLevelPhysicsSystem physicsSystem, ServerSubLevel subLevel) {
       if (subLevel != null && !subLevel.isRemoved()) {
          RagdollSessionManager.unregister(subLevel);
@@ -206,6 +244,7 @@ public final class RagdollRegistry {
    public static void resetState() {
       RAGDOLL_BODY_IDS.clear();
       PLAYER_COOLDOWNS.clear();
+      RESTORED_HEADS.clear();
    }
 
    private static @Nullable ServerSubLevel assembleRagdollBody(ServerLevel level, ServerPlayer player, Vec3 poseForward) {

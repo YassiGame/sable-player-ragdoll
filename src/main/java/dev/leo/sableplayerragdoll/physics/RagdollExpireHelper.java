@@ -38,9 +38,13 @@ public final class RagdollExpireHelper {
    }
 
    public static void expireImmediate(SubLevelPhysicsSystem physicsSystem, ServerLevel level, ServerSubLevel subLevel, String reason) {
+      expireImmediate(physicsSystem, level, subLevel, reason, false);
+   }
+
+   public static void expireImmediate(SubLevelPhysicsSystem physicsSystem, ServerLevel level, ServerSubLevel subLevel, String reason, boolean placePlayerAtRagdoll) {
       if (!subLevel.isRemoved() && !RagdollSessionManager.isExpiring(subLevel)) {
          RagdollSessionManager.markExpiring(subLevel);
-         unseatRider(level, subLevel);
+         unseatRider(level, subLevel, placePlayerAtRagdoll);
          discardSeatEntities(level, subLevel);
          RagdollSessionManager.unregister(subLevel);
          RagdollRegistry.untrack(subLevel.getUniqueId());
@@ -51,13 +55,25 @@ public final class RagdollExpireHelper {
    }
 
    private static void unseatRider(ServerLevel level, ServerSubLevel subLevel) {
+      unseatRider(level, subLevel, false);
+   }
+
+   private static void unseatRider(ServerLevel level, ServerSubLevel subLevel, boolean placePlayerAtRagdoll) {
       UUID playerId = RagdollSessionManager.getPlayerId(subLevel);
       if (playerId != null) {
          Entity entity = level.getEntity(playerId);
          if (entity instanceof LivingEntity livingEntity) {
+            Vec3 releasePosition = placePlayerAtRagdoll ? releasePosition(level, subLevel) : null;
             Vec3 inheritedVelocity = sublevelVelocityAsBlocksPerTick(level, subLevel);
             if (livingEntity.isPassenger()) {
                livingEntity.stopRiding();
+            }
+            if (releasePosition != null) {
+               if (livingEntity instanceof ServerPlayer player) {
+                  player.teleportTo(level, releasePosition.x, releasePosition.y, releasePosition.z, player.getYRot(), player.getXRot());
+               } else {
+                  livingEntity.teleportTo(releasePosition.x, releasePosition.y, releasePosition.z);
+               }
             }
             if (inheritedVelocity != null) {
                livingEntity.setDeltaMovement(inheritedVelocity);
@@ -69,6 +85,13 @@ public final class RagdollExpireHelper {
             }
          }
       }
+   }
+
+   @Nullable
+   private static Vec3 releasePosition(ServerLevel level, ServerSubLevel headSubLevel) {
+      ServerSubLevel source = torsoPart(level, headSubLevel);
+      if (source.getPlot() == null) return null;
+      return source.logicalPose().transformPosition(Vec3.atCenterOf(source.getPlot().getCenterBlock())).add(0.0, 0.5, 0.0);
    }
 
    @Nullable

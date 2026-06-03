@@ -394,7 +394,7 @@ public final class SablePlayerRagdollNeoForge {
       if (ragdoll == null) return;
       SubLevelPhysicsSystem physicsSystem = SubLevelPhysicsSystem.get(level);
       if (physicsSystem == null) return;
-      RagdollExpireHelper.expireImmediate(physicsSystem, level, ragdoll, "player disconnected");
+      RagdollExpireHelper.expireImmediate(physicsSystem, level, ragdoll, "player disconnected", true);
    }
 
    private static void onServerStopped(ServerStoppedEvent event) {
