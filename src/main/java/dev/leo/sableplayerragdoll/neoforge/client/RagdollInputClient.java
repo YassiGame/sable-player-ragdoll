@@ -27,7 +27,7 @@ public final class RagdollInputClient {
          sendIfChanged(0.0F, 0.0F, true);
          return;
       }
-      float strafe = axis(player.input.left, player.input.right);
+      float strafe = axis(player.input.right, player.input.left);
       float forward = axis(player.input.down, player.input.up);
       sendIfChanged(strafe, forward, false);
    }
