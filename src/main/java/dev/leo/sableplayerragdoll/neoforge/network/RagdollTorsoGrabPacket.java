@@ -34,7 +34,7 @@ public record RagdollTorsoGrabPacket(BlockPos pos, float desiredRange, boolean r
          if (!(context.player() instanceof ServerPlayer player)) return;
          if (RagdollSessionManager.activeRagdollForPlayer(player.serverLevel(), player.getUUID()) != null) return;
          BlockEntity blockEntity = player.level().getBlockEntity(packet.pos());
-         if (blockEntity instanceof RagdollPartBlockEntity ragdollPart && ragdollPart.canBeGrabbedAsTorso()) {
+         if (blockEntity instanceof RagdollPartBlockEntity ragdollPart && ragdollPart.canBeGrabbed()) {
             if (packet.release()) {
                ragdollPart.stopTorsoGrab(player.getUUID());
             } else {

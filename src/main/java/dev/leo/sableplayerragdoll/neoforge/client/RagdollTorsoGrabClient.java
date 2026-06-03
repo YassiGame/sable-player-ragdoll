@@ -39,12 +39,12 @@ public final class RagdollTorsoGrabClient {
       if (!minecraft.options.keyUse.isDown()) { stopGrab(); return; }
       if (activePos != null) return;
 
-      BlockPos torsoPos = targetedTorso(minecraft);
-      if (torsoPos == null) return;
+      BlockPos partPos = targetedPart(minecraft);
+      if (partPos == null) return;
 
-      float desiredRange = desiredRange(player, torsoPos);
-      activePos = torsoPos;
-      PacketDistributor.sendToServer(new RagdollTorsoGrabPacket(torsoPos, desiredRange, false), new CustomPacketPayload[0]);
+      float desiredRange = desiredRange(player, partPos);
+      activePos = partPos;
+      PacketDistributor.sendToServer(new RagdollTorsoGrabPacket(partPos, desiredRange, false), new CustomPacketPayload[0]);
       player.swing(InteractionHand.MAIN_HAND);
    }
 
@@ -56,16 +56,16 @@ public final class RagdollTorsoGrabClient {
    }
 
    @Nullable
-   private static BlockPos targetedTorso(Minecraft minecraft) {
+   private static BlockPos targetedPart(Minecraft minecraft) {
       if (!(minecraft.hitResult instanceof BlockHitResult blockHit) || blockHit.getType() == HitResult.Type.MISS || minecraft.level == null) return null;
       BlockPos pos = blockHit.getBlockPos();
       BlockEntity blockEntity = minecraft.level.getBlockEntity(pos);
-      return blockEntity instanceof RagdollPartBlockEntity ragdollPart && ragdollPart.canBeGrabbedAsTorso() ? pos : null;
+      return blockEntity instanceof RagdollPartBlockEntity ragdollPart && ragdollPart.canBeGrabbed() ? pos : null;
    }
 
-   private static float desiredRange(LocalPlayer player, BlockPos torsoPos) {
-      if (player.level().getBlockEntity(torsoPos) instanceof RagdollPartBlockEntity ragdollPart) {
-         Vector3d projected = Sable.HELPER.projectOutOfSubLevel(player.level(), ragdollPart.torsoGrabCenter());
+   private static float desiredRange(LocalPlayer player, BlockPos partPos) {
+      if (player.level().getBlockEntity(partPos) instanceof RagdollPartBlockEntity ragdollPart) {
+         Vector3d projected = Sable.HELPER.projectOutOfSubLevel(player.level(), ragdollPart.grabCenter());
          Vec3 eyePosition = player.getEyePosition();
          double maxRange = Math.min(MAX_GRAB_RANGE, player.getAttribute(Attributes.BLOCK_INTERACTION_RANGE).getValue());
          return (float) Math.min(projected.distance(eyePosition.x, eyePosition.y, eyePosition.z), maxRange);

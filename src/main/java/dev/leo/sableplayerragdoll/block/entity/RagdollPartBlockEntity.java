@@ -38,11 +38,11 @@ import org.joml.Quaterniond;
 import org.joml.Vector3d;
 
 public final class RagdollPartBlockEntity extends BlockEntity implements BlockEntitySubLevelActor {
-   private static final double TORSO_GRAB_STIFFNESS = 70.0;
-   private static final double TORSO_GRAB_DAMPING = 12.0;
-   private static final double TORSO_GRAB_ANGULAR_DAMPING = 2.0;
-   private static final double TORSO_GRAB_MAX_FORCE = 180.0;
-   private static final double TORSO_GRAB_MAX_RANGE = 5.0;
+   private static final double GRAB_STIFFNESS = 70.0;
+   private static final double GRAB_DAMPING = 12.0;
+   private static final double GRAB_ANGULAR_DAMPING = 2.0;
+   private static final double GRAB_MAX_FORCE = 180.0;
+   private static final double GRAB_MAX_RANGE = 5.0;
    private BodyPart bodyPart = BodyPart.TORSO;
    @Nullable
    private UUID skinUuid;
@@ -55,7 +55,7 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
    private ItemStack chestItem = ItemStack.EMPTY;
    private ItemStack legsItem = ItemStack.EMPTY;
    private ItemStack feetItem = ItemStack.EMPTY;
-   private final Map<UUID, TorsoGrabConstraint> torsoGrabbers = new HashMap<>();
+   private final Map<UUID, GrabConstraint> grabbers = new HashMap<>();
 
    public RagdollPartBlockEntity(BlockPos pos, BlockState state) {
       super(RagdollPartBlockEntities.ragdollPart(), pos, state);
@@ -86,28 +86,28 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
       return this.bodyPart;
    }
 
-   public boolean canBeGrabbedAsTorso() {
-      return this.bodyPart == BodyPart.TORSO;
+   public boolean canBeGrabbed() {
+      return true;
    }
 
    public void startTorsoGrab(UUID playerId, float desiredRange) {
-      if (!this.canBeGrabbedAsTorso()) {
+      if (!this.canBeGrabbed()) {
          return;
       }
 
-      this.torsoGrabbers.compute(playerId, (unused, existing) -> {
+      this.grabbers.compute(playerId, (unused, existing) -> {
          if (existing != null) {
             existing.setDesiredRange(desiredRange);
             return existing;
          }
 
-         return new TorsoGrabConstraint(playerId, desiredRange);
+         return new GrabConstraint(playerId, desiredRange);
       });
       this.setChanged();
    }
 
    public void stopTorsoGrab(UUID playerId) {
-      TorsoGrabConstraint constraint = this.torsoGrabbers.remove(playerId);
+      GrabConstraint constraint = this.grabbers.remove(playerId);
       if (constraint != null) {
          constraint.removeJoint();
          this.setChanged();
@@ -116,26 +116,28 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
 
    @Override
    public void sable$physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double timeStep) {
-      if (!this.canBeGrabbedAsTorso()) {
-         this.removeAllTorsoGrabbers();
+      if (!this.canBeGrabbed()) {
+         this.removeAllGrabbers();
          return;
       }
 
-      this.checkTorsoGrabbers();
-      for (TorsoGrabConstraint constraint : this.torsoGrabbers.values()) {
+      this.checkGrabbers();
+      for (GrabConstraint constraint : this.grabbers.values()) {
          constraint.physicsTick(subLevel);
       }
 
-      RagdollControlHelper.apply(subLevel, handle, timeStep);
+      if (this.bodyPart == BodyPart.TORSO) {
+         RagdollControlHelper.apply(subLevel, handle, timeStep);
+      }
    }
 
-   private void checkTorsoGrabbers() {
-      if (this.level == null || this.torsoGrabbers.isEmpty()) {
+   private void checkGrabbers() {
+      if (this.level == null || this.grabbers.isEmpty()) {
          return;
       }
 
-      for (Iterator<Map.Entry<UUID, TorsoGrabConstraint>> it = this.torsoGrabbers.entrySet().iterator(); it.hasNext();) {
-         Map.Entry<UUID, TorsoGrabConstraint> entry = it.next();
+      for (Iterator<Map.Entry<UUID, GrabConstraint>> it = this.grabbers.entrySet().iterator(); it.hasNext();) {
+         Map.Entry<UUID, GrabConstraint> entry = it.next();
          Player player = this.level.getPlayerByUUID(entry.getKey());
          if (player == null || player.isDeadOrDying() || player.isSpectator()) {
             entry.getValue().removeJoint();
@@ -145,10 +147,10 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
       }
    }
 
-   private void removeAllTorsoGrabbers() {
-      if (!this.torsoGrabbers.isEmpty()) {
-         this.torsoGrabbers.values().forEach(TorsoGrabConstraint::removeJoint);
-         this.torsoGrabbers.clear();
+   private void removeAllGrabbers() {
+      if (!this.grabbers.isEmpty()) {
+         this.grabbers.values().forEach(GrabConstraint::removeJoint);
+         this.grabbers.clear();
          this.setChanged();
       }
    }
@@ -156,10 +158,10 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
    @Override
    public void setRemoved() {
       super.setRemoved();
-      this.removeAllTorsoGrabbers();
+      this.removeAllGrabbers();
    }
 
-   public Vector3d torsoGrabCenter() {
+   public Vector3d grabCenter() {
       return JOMLConversion.atCenterOf(this.getBlockPos());
    }
 
@@ -240,13 +242,13 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
       return tag.contains(key) ? ItemStack.parse(registries, tag.getCompound(key)).orElse(ItemStack.EMPTY) : ItemStack.EMPTY;
    }
 
-   private final class TorsoGrabConstraint {
+   private final class GrabConstraint {
       private final UUID playerId;
       private float desiredRange;
       @Nullable
       private PhysicsConstraintHandle constraintHandle;
 
-      private TorsoGrabConstraint(UUID playerId, float desiredRange) {
+      private GrabConstraint(UUID playerId, float desiredRange) {
          this.playerId = playerId;
          this.setDesiredRange(desiredRange);
       }
@@ -268,7 +270,7 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
          }
 
          Vector3d constraintGoal = JOMLConversion.toJOML(player.getEyePosition().add(player.getLookAngle().scale(Math.max(2.0, this.desiredRange))));
-         Vector3d constraintPosition = RagdollPartBlockEntity.this.torsoGrabCenter();
+         Vector3d constraintPosition = RagdollPartBlockEntity.this.grabCenter();
          double validRange = player.getAttribute(Attributes.BLOCK_INTERACTION_RANGE).getValue() + 2.0;
          double currentDistance = Sable.HELPER.distanceSquaredWithSubLevels(RagdollPartBlockEntity.this.level, constraintGoal, constraintPosition);
          if (Mth.equal(-1.0F, this.desiredRange) || currentDistance > validRange * validRange) {
@@ -285,16 +287,16 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
             .addConstraint(null, subLevel, new FreeConstraintConfiguration(constraintGoal, constraintPosition, new Quaterniond()));
 
          for (ConstraintJointAxis axis : ConstraintJointAxis.LINEAR) {
-            this.constraintHandle.setMotor(axis, 0.0, TORSO_GRAB_STIFFNESS, TORSO_GRAB_DAMPING, true, TORSO_GRAB_MAX_FORCE);
+            this.constraintHandle.setMotor(axis, 0.0, GRAB_STIFFNESS, GRAB_DAMPING, true, GRAB_MAX_FORCE);
          }
 
          for (ConstraintJointAxis axis : ConstraintJointAxis.ANGULAR) {
-            this.constraintHandle.setMotor(axis, 0.0, 0.0, TORSO_GRAB_ANGULAR_DAMPING, true, TORSO_GRAB_MAX_FORCE);
+            this.constraintHandle.setMotor(axis, 0.0, 0.0, GRAB_ANGULAR_DAMPING, true, GRAB_MAX_FORCE);
          }
       }
 
       private void setDesiredRange(float desiredRange) {
-         this.desiredRange = (float)Math.clamp(desiredRange, 1.0F, TORSO_GRAB_MAX_RANGE);
+         this.desiredRange = (float)Math.clamp(desiredRange, 1.0F, GRAB_MAX_RANGE);
       }
 
       private void removeJoint() {
