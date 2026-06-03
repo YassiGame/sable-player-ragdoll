@@ -1,7 +1,6 @@
 package dev.leo.sableplayerragdoll.api;
 
 import com.mojang.authlib.GameProfile;
-import dev.leo.sableplayerragdoll.config.RagdollSettings;
 import dev.leo.sableplayerragdoll.physics.RagdollExpireHelper;
 import dev.leo.sableplayerragdoll.physics.RagdollRegistry;
 import dev.leo.sableplayerragdoll.physics.RagdollSessionManager;
@@ -27,18 +26,24 @@ public final class RagdollAPI {
 
    @Nullable
    public static RagdollSession launch(ServerPlayer player, Vec3 linearVelocityMetersPerSecond) {
-      return launch(player, linearVelocityMetersPerSecond, List.of());
+      return launch(player, linearVelocityMetersPerSecond, RagdollLaunchOptions.defaults());
    }
 
    @Nullable
    public static RagdollSession launch(ServerPlayer player, Vec3 linearVelocityMetersPerSecond, List<DespawnCondition> conditions) {
+      return launch(player, linearVelocityMetersPerSecond, RagdollLaunchOptions.builder().despawnConditions(conditions).build());
+   }
+
+   @Nullable
+   public static RagdollSession launch(ServerPlayer player, Vec3 linearVelocityMetersPerSecond, RagdollLaunchOptions options) {
       ServerLevel level = player.serverLevel();
       Vector3d linear = new Vector3d(linearVelocityMetersPerSecond.x, linearVelocityMetersPerSecond.y, linearVelocityMetersPerSecond.z);
       Vector3d angular = new Vector3d();
-      ServerSubLevel body = RagdollRegistry.launch(level, player, linear, angular, player.isFallFlying(), RagdollSettings.autoSeatOnTrigger());
+      RagdollLaunchOptions resolvedOptions = options == null ? RagdollLaunchOptions.defaults() : options;
+      ServerSubLevel body = RagdollRegistry.launch(level, player, linear, angular, player.isFallFlying(), resolvedOptions.autoSeat());
       if (body == null) return null;
-      RagdollSessionManager.setCustomDespawnConditions(body, conditions);
-      return new ActiveRagdollSession(player, body, level.getGameTime(), conditions);
+      RagdollSessionManager.setCustomDespawnConditions(body, resolvedOptions.despawnConditions());
+      return new ActiveRagdollSession(player, body, level.getGameTime(), resolvedOptions.despawnConditions());
    }
 
    @Nullable

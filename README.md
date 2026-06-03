@@ -91,6 +91,7 @@ Main API entry points:
 ```java
 RagdollAPI.launch(player, velocity);
 RagdollAPI.launch(player, velocity, despawnConditions);
+RagdollAPI.launch(player, velocity, launchOptions);
 RagdollAPI.spawnPlayerless(level, position, headingDegrees);
 RagdollAPI.spawnPlayerless(level, position, headingDegrees, velocity);
 RagdollAPI.spawnPlayerless(level, position, headingDegrees, profile, velocity);
@@ -109,6 +110,17 @@ DespawnCondition.all(...);
 DespawnCondition.any(...);
 ```
 
+Player launches can be customized per call with `RagdollLaunchOptions`:
+
+```java
+RagdollLaunchOptions options = RagdollLaunchOptions.builder()
+   .autoSeat(false)
+   .despawnConditions(List.of(DespawnCondition.afterTicks(80)))
+   .build();
+
+RagdollAPI.launch(player, velocityMetersPerSecond, options);
+```
+
 Playerless ragdolls use `PlayerlessDespawnRule`:
 
 ```java
@@ -117,6 +129,19 @@ PlayerlessDespawnRule.never();
 PlayerlessDespawnRule.afterTicks(ticks);
 PlayerlessDespawnRule.belowSpeed(metersPerSecond);
 ```
+
+Addon hooks are posted on the NeoForge game event bus:
+
+```java
+RagdollStartEvent
+RagdollEndEvent
+```
+
+`RagdollStartEvent` fires before a player ragdoll is assembled. It is
+cancellable, and listeners can replace the launch velocity.
+
+`RagdollEndEvent` fires after a player exits a ragdoll. It exposes the player,
+the exit velocity inherited from the ragdoll, and a reason.
 
 The API currently focuses on spawning, despawning, and basic session queries. It
 does not currently expose deep ragdoll internals such as per-body-part inventory

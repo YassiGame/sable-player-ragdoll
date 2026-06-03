@@ -2,6 +2,7 @@ package dev.leo.sableplayerragdoll.physics;
 
 import com.mojang.authlib.GameProfile;
 import dev.leo.sableplayerragdoll.SablePlayerRagdoll;
+import dev.leo.sableplayerragdoll.api.RagdollStartEvent;
 import dev.leo.sableplayerragdoll.block.RagdollBlocks;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
 import dev.leo.sableplayerragdoll.config.RagdollSettings;
@@ -25,6 +26,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
@@ -46,6 +48,12 @@ public final class RagdollRegistry {
       if (!RagdollSettings.enabled()) return null;
       SubLevelPhysicsSystem physicsSystem = SubLevelPhysicsSystem.get(level);
       if (physicsSystem == null) return null;
+
+      RagdollStartEvent event = new RagdollStartEvent(player, new Vec3(linear.x, linear.y, linear.z));
+      if (NeoForge.EVENT_BUS.post(event).isCanceled()) {
+         return null;
+      }
+      linear = new Vector3d(event.velocity().x, event.velocity().y, event.velocity().z);
 
       boolean ragdollPose = elytraPose && player.isFallFlying();
       Vec3 launchDir = new Vec3(linear.x, linear.y, linear.z);

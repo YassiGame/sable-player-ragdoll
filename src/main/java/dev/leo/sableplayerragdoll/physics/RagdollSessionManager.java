@@ -27,6 +27,7 @@ public final class RagdollSessionManager {
    private static final String PLAYER_ID_KEY = "playerId";
    private static final String NON_PLAYER_KEY = "nonPlayer";
    private static final String EXPIRING_KEY = "expiring";
+   private static final String END_REASON_KEY = "endReason";
    private static final String DESPAWN_MODE_KEY = "despawnMode";
    private static final String DESPAWN_TICKS_KEY = "despawnTicks";
    private static final String DESPAWN_SPEED_KEY = "despawnSpeed";
@@ -230,17 +231,27 @@ public final class RagdollSessionManager {
    }
 
    static void markExpiring(ServerSubLevel subLevel) {
+      markExpiring(subLevel, "expired");
+   }
+
+   static void markExpiring(ServerSubLevel subLevel, String reason) {
       CompoundTag tag = subLevel.getUserDataTag();
       if (tag == null) {
          tag = new CompoundTag();
       }
       tag.putBoolean(EXPIRING_KEY, true);
+      tag.putString(END_REASON_KEY, reason);
       subLevel.setUserDataTag(tag);
    }
 
    public static boolean isExpiring(ServerSubLevel subLevel) {
       CompoundTag tag = subLevel.getUserDataTag();
       return tag != null && tag.getBoolean(EXPIRING_KEY);
+   }
+
+   static @Nullable String getEndReason(ServerSubLevel subLevel) {
+      CompoundTag tag = subLevel.getUserDataTag();
+      return tag != null && tag.contains(END_REASON_KEY) ? tag.getString(END_REASON_KEY) : null;
    }
 
    @Nullable

@@ -2,6 +2,7 @@ package dev.leo.sableplayerragdoll.physics;
 
 import dev.leo.sableplayerragdoll.RagdollSeatCallbacks;
 import dev.leo.sableplayerragdoll.SablePlayerRagdoll;
+import dev.leo.sableplayerragdoll.api.RagdollEndEvent;
 import dev.leo.sableplayerragdoll.entity.RagdollSeatEntity;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
@@ -18,6 +19,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -27,7 +29,7 @@ public final class RagdollExpireHelper {
 
    public static void expire(SubLevelPhysicsSystem physicsSystem, ServerLevel level, ServerSubLevel subLevel, String reason) {
       if (!subLevel.isRemoved() && !RagdollSessionManager.isExpiring(subLevel)) {
-         RagdollSessionManager.markExpiring(subLevel);
+         RagdollSessionManager.markExpiring(subLevel, reason);
          unseatRider(level, subLevel);
          discardSeatEntities(level, subLevel);
          RagdollSessionManager.unregister(subLevel);
@@ -43,7 +45,7 @@ public final class RagdollExpireHelper {
 
    public static void expireImmediate(SubLevelPhysicsSystem physicsSystem, ServerLevel level, ServerSubLevel subLevel, String reason, boolean placePlayerAtRagdoll) {
       if (!subLevel.isRemoved() && !RagdollSessionManager.isExpiring(subLevel)) {
-         RagdollSessionManager.markExpiring(subLevel);
+         RagdollSessionManager.markExpiring(subLevel, reason);
          unseatRider(level, subLevel, placePlayerAtRagdoll);
          discardSeatEntities(level, subLevel);
          RagdollSessionManager.unregister(subLevel);
@@ -65,6 +67,7 @@ public final class RagdollExpireHelper {
          if (entity instanceof LivingEntity livingEntity) {
             Vec3 releasePosition = placePlayerAtRagdoll ? releasePosition(level, subLevel) : null;
             Vec3 inheritedVelocity = sublevelVelocityAsBlocksPerTick(level, subLevel);
+            Vec3 exitVelocity = inheritedVelocity == null ? Vec3.ZERO : inheritedVelocity;
             if (livingEntity.isPassenger()) {
                livingEntity.stopRiding();
             }
@@ -75,16 +78,25 @@ public final class RagdollExpireHelper {
                   livingEntity.teleportTo(releasePosition.x, releasePosition.y, releasePosition.z);
                }
             }
-            if (inheritedVelocity != null) {
-               livingEntity.setDeltaMovement(inheritedVelocity);
+            if (exitVelocity != Vec3.ZERO) {
+               livingEntity.setDeltaMovement(exitVelocity);
             }
             RagdollSeatingHelper.restoreVisibility(livingEntity);
             if (livingEntity instanceof ServerPlayer player) {
                RagdollRegistry.suppressAfterRelease(player.getUUID(), level.getGameTime());
                RagdollSeatCallbacks.notifyReleased(player);
+               NeoForge.EVENT_BUS.post(new RagdollEndEvent(player, exitVelocity, endReason(subLevel)));
             }
          }
       }
+   }
+
+   private static RagdollEndEvent.Reason endReason(ServerSubLevel subLevel) {
+      String reason = RagdollSessionManager.getEndReason(subLevel);
+      if ("player died".equals(reason)) return RagdollEndEvent.Reason.PLAYER_DEATH;
+      if ("player disconnected".equals(reason)) return RagdollEndEvent.Reason.PLAYER_LOGOUT;
+      if (reason != null && reason.startsWith("api")) return RagdollEndEvent.Reason.RELEASED;
+      return RagdollEndEvent.Reason.EXPIRED;
    }
 
    @Nullable
