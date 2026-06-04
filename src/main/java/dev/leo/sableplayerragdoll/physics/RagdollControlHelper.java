@@ -24,6 +24,8 @@ public final class RagdollControlHelper {
    private static final double LEVITATION_ACCELERATION = 52.2;
    private static final double LEVITATION_FRONT_OFFSET = 0.35;
    private static final double MAX_LEVITATION_SPEED = 3.0;
+   private static final double SLOW_FALLING_ACCELERATION = 34.0;
+   private static final double MAX_SLOW_FALLING_DESCENT_SPEED = -1.7;
    private static final int INPUT_TIMEOUT_TICKS = 10;
    private static final Map<UUID, ControlInput> INPUTS = new ConcurrentHashMap<>();
 
@@ -46,6 +48,7 @@ public final class RagdollControlHelper {
       }
 
       applyLevitation(player, torsoSubLevel, handle, timeStep);
+      applySlowFalling(player, torsoSubLevel, handle, timeStep);
 
       ControlInput input = INPUTS.get(player.getUUID());
       if (input == null || level.getGameTime() - input.gameTime() > (long)INPUT_TIMEOUT_TICKS) {
@@ -88,6 +91,23 @@ public final class RagdollControlHelper {
       );
       ForceTotal forceTotal = new ForceTotal();
       forceTotal.applyImpulseAtPoint(torsoSubLevel, localLiftPoint, localImpulse);
+      handle.applyForcesAndReset(forceTotal);
+   }
+
+   private static void applySlowFalling(ServerPlayer player, ServerSubLevel torsoSubLevel, RigidBodyHandle handle, double timeStep) {
+      if (player.getEffect(MobEffects.SLOW_FALLING) == null || player.getEffect(MobEffects.LEVITATION) != null) {
+         return;
+      }
+
+      double verticalSpeed = handle.getLinearVelocity(new Vector3d()).y();
+      if (verticalSpeed >= MAX_SLOW_FALLING_DESCENT_SPEED) {
+         return;
+      }
+
+      Vector3d worldImpulse = new Vector3d(0.0, SLOW_FALLING_ACCELERATION * timeStep, 0.0);
+      Vector3d localImpulse = torsoSubLevel.logicalPose().transformNormalInverse(worldImpulse, new Vector3d());
+      ForceTotal forceTotal = new ForceTotal();
+      forceTotal.applyLinearAndAngularImpulse(localImpulse, new Vector3d());
       handle.applyForcesAndReset(forceTotal);
    }
 
