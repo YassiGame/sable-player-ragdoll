@@ -127,6 +127,17 @@ processResources {
     inputs.properties(expandProps)
 }
 
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = "${mod_id}-${minecraft_version}"
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
+}
 jar {
     manifest {
         attributes([
