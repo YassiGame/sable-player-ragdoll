@@ -7,6 +7,8 @@ import dev.leo.sableplayerragdoll.block.RagdollBlocks;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
 import dev.leo.sableplayerragdoll.config.RagdollSettings;
 import dev.leo.sableplayerragdoll.api.PlayerlessDespawnRule;
+import dev.leo.sableplayerragdoll.RagdollKeybindExample;
+import dev.leo.sableplayerragdoll.api.RagdollLimbOptions;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
@@ -33,7 +35,6 @@ import org.joml.Vector3dc;
 
 public final class RagdollRegistry {
    private static final double BLOCKS_PER_TICK_TO_METERS_PER_SECOND = 20.0;
-   private static final double MANUAL_RAGDOLL_UPWARD_SPEED = 10.0;
    private static final Set<UUID> RAGDOLL_BODY_IDS = new HashSet<>();
    private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
    private static final Set<UUID> RESTORED_HEADS = ConcurrentHashMap.newKeySet();
@@ -45,6 +46,10 @@ public final class RagdollRegistry {
    // Called by RagdollAPI and detection layer to create and launch a ragdoll.
    @Nullable
    public static ServerSubLevel launch(ServerLevel level, ServerPlayer player, Vector3d linear, Vector3d angular, boolean elytraPose, boolean autoSeat) {
+      return launch(level, player, linear, angular, elytraPose, autoSeat, RagdollLimbOptions.defaults());
+   }
+
+   public static ServerSubLevel launch(ServerLevel level, ServerPlayer player, Vector3d linear, Vector3d angular, boolean elytraPose, boolean autoSeat, RagdollLimbOptions limbs) {
       if (!RagdollSettings.enabled()) return null;
       SubLevelPhysicsSystem physicsSystem = SubLevelPhysicsSystem.get(level);
       if (physicsSystem == null) return null;
@@ -58,8 +63,8 @@ public final class RagdollRegistry {
       boolean ragdollPose = elytraPose && player.isFallFlying();
       Vec3 launchDir = new Vec3(linear.x, linear.y, linear.z);
       ServerSubLevel ragdollBody = ragdollPose
-         ? assembleElytraRagdollBody(level, player, launchDir)
-         : assembleRagdollBody(level, player, bodyForward(player));
+         ? assembleElytraRagdollBody(level, player, launchDir, limbs)
+         : assembleRagdollBody(level, player, bodyForward(player), limbs);
       if (ragdollBody == null) return null;
 
       BlockPos plotSeat = ragdollBody.getPlot().getCenterBlock();
@@ -93,13 +98,27 @@ public final class RagdollRegistry {
       Vector3d angular,
       PlayerlessDespawnRule despawnRule
    ) {
+      return spawnPlayerless(level, baseCenter, heading, profile, linear, angular, despawnRule, RagdollLimbOptions.defaults());
+   }
+
+   @Nullable
+   public static ServerSubLevel spawnPlayerless(
+      ServerLevel level,
+      Vec3 baseCenter,
+      Vec3 heading,
+      GameProfile profile,
+      Vector3d linear,
+      Vector3d angular,
+      PlayerlessDespawnRule despawnRule,
+      RagdollLimbOptions limbs
+   ) {
       if (!RagdollSettings.enabled()) return null;
       SubLevelPhysicsSystem physicsSystem = SubLevelPhysicsSystem.get(level);
       if (physicsSystem == null) return null;
 
       Vec3 forward = normalizeOr(new Vec3(heading.x, 0.0, heading.z), new Vec3(0.0, 0.0, 1.0));
       Vec3 right = horizontalRight(forward);
-      RagdollAssemblyHelper.Doll doll = RagdollAssemblyHelper.spawn(level, profile, baseCenter, right, forward);
+      RagdollAssemblyHelper.Doll doll = RagdollAssemblyHelper.spawn(level, profile, baseCenter, right, forward, limbs);
       if (doll == null) return null;
 
       ServerSubLevel ragdollBody = doll.headSubLevel();
@@ -145,14 +164,13 @@ public final class RagdollRegistry {
       Vec3 knownMovement = player.getKnownMovement();
       Vector3d linear = elytraPose
          ? clampRagdollLaunchVelocity(toMetersPerSecond(deltaMovement))
-         : withManualKick(clampRagdollLaunchVelocity(toMetersPerSecond(new Vec3(knownMovement.x, 0, knownMovement.z))));
-      Vector3d angular = new Vector3d();
-      ServerSubLevel body = launch(level, player, linear, angular, elytraPose, RagdollSettings.autoSeatOnTrigger());
-      if (body != null) {
-         SablePlayerRagdoll.LOGGER.info("[sable_player_ragdoll] manual ragdoll {} for {} launch={} m/s",
-            shortId(body.getUniqueId()), player.getGameProfile().getName(), fmtVec3dc(linear));
+         : clampRagdollLaunchVelocity(toMetersPerSecond(new Vec3(knownMovement.x, 0, knownMovement.z)));
+      boolean launched = RagdollKeybindExample.launch(player, new Vec3(linear.x, linear.y, linear.z)) != null;
+      if (launched) {
+         SablePlayerRagdoll.LOGGER.info("[sable_player_ragdoll] manual ragdoll for {} launch={} m/s",
+            player.getGameProfile().getName(), fmtVec3dc(linear));
       }
-      return body != null;
+      return launched;
    }
 
    public static boolean triggerWeaponHit(ServerPlayer attacker, ServerPlayer target) {
@@ -257,18 +275,18 @@ public final class RagdollRegistry {
       RESTORED_HEADS.clear();
    }
 
-   private static @Nullable ServerSubLevel assembleRagdollBody(ServerLevel level, ServerPlayer player, Vec3 poseForward) {
+   private static @Nullable ServerSubLevel assembleRagdollBody(ServerLevel level, ServerPlayer player, Vec3 poseForward, RagdollLimbOptions limbs) {
       Vec3 forward = normalizeOr(new Vec3(poseForward.x, 0.0, poseForward.z), bodyForward(player));
       Vec3 right = horizontalRight(forward);
       Vec3 baseCenter = Vec3.atCenterOf(BlockPos.containing(player.position()));
-      RagdollAssemblyHelper.Doll doll = RagdollAssemblyHelper.spawn(level, player, baseCenter, right, forward);
+      RagdollAssemblyHelper.Doll doll = RagdollAssemblyHelper.spawn(level, player, baseCenter, right, forward, limbs);
       if (doll == null) return null;
       SablePlayerRagdoll.LOGGER.info("[sable_player_ragdoll] assembled ragdoll {} for {} ({} parts, {} constraints)",
          shortId(doll.headSubLevel().getUniqueId()), player.getGameProfile().getName(), doll.allSubLevels().size(), doll.constraints());
       return doll.headSubLevel();
    }
 
-   private static @Nullable ServerSubLevel assembleElytraRagdollBody(ServerLevel level, ServerPlayer player, Vec3 movementDirection) {
+   private static @Nullable ServerSubLevel assembleElytraRagdollBody(ServerLevel level, ServerPlayer player, Vec3 movementDirection, RagdollLimbOptions limbs) {
       Vec3 up = normalizeOr(movementDirection, yawForward(player));
       Vec3 forward = projectedOntoPlane(new Vec3(0.0, -1.0, 0.0), up);
       if (forward.lengthSqr() < 1.0E-6) forward = projectedOntoPlane(yawForward(player), up);
@@ -276,7 +294,7 @@ public final class RagdollRegistry {
       Vec3 right = normalizeOr(up.cross(forward), new Vec3(1.0, 0.0, 0.0));
       forward = normalizeOr(right.cross(up), forward);
       Vec3 baseCenter = Vec3.atCenterOf(BlockPos.containing(player.position()));
-      RagdollAssemblyHelper.Doll doll = RagdollAssemblyHelper.spawn(level, player, baseCenter, right, up, forward, true);
+      RagdollAssemblyHelper.Doll doll = RagdollAssemblyHelper.spawn(level, player, baseCenter, right, up, forward, true, limbs);
       if (doll == null) return null;
       SablePlayerRagdoll.LOGGER.info("[sable_player_ragdoll] assembled elytra ragdoll {} for {} ({} parts, {} constraints)",
          shortId(doll.headSubLevel().getUniqueId()), player.getGameProfile().getName(), doll.allSubLevels().size(), doll.constraints());
@@ -302,11 +320,6 @@ public final class RagdollRegistry {
       if (!manualTrigger && player.isCreative() && !RagdollSettings.affectCreative()) return false;
       if (RagdollSessionManager.activeRagdollForPlayer(player.serverLevel(), player.getUUID()) != null) return false;
       return gameTime >= PLAYER_COOLDOWNS.getOrDefault(player.getUUID(), Long.MIN_VALUE);
-   }
-
-   private static Vector3d withManualKick(Vector3d linear) {
-      linear.y += MANUAL_RAGDOLL_UPWARD_SPEED;
-      return linear;
    }
 
    private static Vector3d toMetersPerSecond(Vec3 blocksPerTick) {

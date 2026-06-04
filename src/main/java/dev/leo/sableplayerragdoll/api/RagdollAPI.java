@@ -40,7 +40,7 @@ public final class RagdollAPI {
       Vector3d linear = new Vector3d(linearVelocityMetersPerSecond.x, linearVelocityMetersPerSecond.y, linearVelocityMetersPerSecond.z);
       Vector3d angular = new Vector3d();
       RagdollLaunchOptions resolvedOptions = options == null ? RagdollLaunchOptions.defaults() : options;
-      ServerSubLevel body = RagdollRegistry.launch(level, player, linear, angular, player.isFallFlying(), resolvedOptions.autoSeat());
+      ServerSubLevel body = RagdollRegistry.launch(level, player, linear, angular, player.isFallFlying(), resolvedOptions.autoSeat(), resolvedOptions.limbs());
       if (body == null) return null;
       RagdollSessionManager.setCustomDespawnConditions(body, resolvedOptions.despawnConditions());
       return new ActiveRagdollSession(player, body, level.getGameTime(), resolvedOptions.despawnConditions());
@@ -81,9 +81,23 @@ public final class RagdollAPI {
       Vec3 linearVelocityMetersPerSecond,
       PlayerlessDespawnRule despawnRule
    ) {
+      return spawnPlayerless(level, position, headingDegrees, profile, linearVelocityMetersPerSecond, despawnRule, RagdollLimbOptions.defaults());
+   }
+
+   @Nullable
+   public static PlayerlessRagdollSession spawnPlayerless(
+      ServerLevel level,
+      Vec3 position,
+      double headingDegrees,
+      GameProfile profile,
+      Vec3 linearVelocityMetersPerSecond,
+      PlayerlessDespawnRule despawnRule,
+      RagdollLimbOptions limbs
+   ) {
       Vec3 heading = Vec3.directionFromRotation(0.0F, (float) headingDegrees);
       Vector3d linear = new Vector3d(linearVelocityMetersPerSecond.x, linearVelocityMetersPerSecond.y, linearVelocityMetersPerSecond.z);
-      ServerSubLevel body = RagdollRegistry.spawnPlayerless(level, position, heading, profile, linear, new Vector3d(), despawnRule);
+      RagdollLimbOptions resolvedLimbs = limbs == null ? RagdollLimbOptions.defaults() : limbs;
+      ServerSubLevel body = RagdollRegistry.spawnPlayerless(level, position, heading, profile, linear, new Vector3d(), despawnRule, resolvedLimbs);
       if (body == null) return null;
       return new ActivePlayerlessRagdollSession(level, body, level.getGameTime());
    }

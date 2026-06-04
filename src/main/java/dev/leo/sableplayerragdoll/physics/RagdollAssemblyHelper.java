@@ -5,6 +5,8 @@ import dev.leo.sableplayerragdoll.SablePlayerRagdoll;
 import dev.leo.sableplayerragdoll.block.RagdollBlocks;
 import dev.leo.sableplayerragdoll.block.RagdollPartBlock;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity;
+import dev.leo.sableplayerragdoll.api.RagdollLimbConfig;
+import dev.leo.sableplayerragdoll.api.RagdollLimbOptions;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
 import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
@@ -37,6 +39,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
 
 public final class RagdollAssemblyHelper {
    private static final double NECK_TORSO_Y = 0.83;
@@ -58,6 +61,7 @@ public final class RagdollAssemblyHelper {
       new PartSpawn("left_leg", BodyPart.LEFT_LEG, 0.12, 0.5125, 0.0, 0.0),
       new PartSpawn("right_leg", BodyPart.RIGHT_LEG, -0.12, 0.5125, 0.0, 0.0)
    };
+   private static final Map<BodyPart, PartSpawn> PART_BY_BODY = buildPartIndex();
    private static final List<PhysicsConstraintHandle> ACTIVE_CONSTRAINTS = new ArrayList<>();
    private static final Map<UUID, List<UUID>> DOLL_PARTS_BY_HEAD = new ConcurrentHashMap<>();
    private static final Map<UUID, BodyPart> BODY_PART_BY_SUBLEVEL = new ConcurrentHashMap<>();
@@ -67,12 +71,28 @@ public final class RagdollAssemblyHelper {
    private RagdollAssemblyHelper() {
    }
 
+   private static Map<BodyPart, PartSpawn> buildPartIndex() {
+      Map<BodyPart, PartSpawn> index = new EnumMap<>(BodyPart.class);
+      for (PartSpawn part : PARTS) {
+         index.put(part.bodyPart(), part);
+      }
+      return index;
+   }
+
    public static @Nullable Doll spawn(ServerLevel level, ServerPlayer player, Vec3 baseCenter, Vec3 right, Vec3 forward) {
       return spawn(level, player, baseCenter, right, new Vec3(0.0, 1.0, 0.0), forward, false);
    }
 
    public static @Nullable Doll spawn(ServerLevel level, GameProfile profile, Vec3 baseCenter, Vec3 right, Vec3 forward) {
-      return spawn(level, profile, null, baseCenter, right, new Vec3(0.0, 1.0, 0.0), forward, false);
+      return spawn(level, profile, null, baseCenter, right, new Vec3(0.0, 1.0, 0.0), forward, false, RagdollLimbOptions.defaults());
+   }
+
+   public static @Nullable Doll spawn(ServerLevel level, GameProfile profile, Vec3 baseCenter, Vec3 right, Vec3 forward, RagdollLimbOptions limbs) {
+      return spawn(level, profile, null, baseCenter, right, new Vec3(0.0, 1.0, 0.0), forward, false, limbs);
+   }
+
+   public static @Nullable Doll spawn(ServerLevel level, ServerPlayer player, Vec3 baseCenter, Vec3 right, Vec3 forward, RagdollLimbOptions limbs) {
+      return spawn(level, player.getGameProfile(), player, baseCenter, right, new Vec3(0.0, 1.0, 0.0), forward, false, limbs);
    }
 
    public static @Nullable Doll spawn(ServerLevel level, ServerPlayer player, Vec3 baseCenter, Vec3 right, Vec3 up, Vec3 forward) {
@@ -80,11 +100,15 @@ public final class RagdollAssemblyHelper {
    }
 
    public static @Nullable Doll spawn(ServerLevel level, GameProfile profile, Vec3 baseCenter, Vec3 right, Vec3 up, Vec3 forward) {
-      return spawn(level, profile, null, baseCenter, right, up, forward, false);
+      return spawn(level, profile, null, baseCenter, right, up, forward, false, RagdollLimbOptions.defaults());
    }
 
    public static @Nullable Doll spawn(ServerLevel level, ServerPlayer player, Vec3 baseCenter, Vec3 right, Vec3 up, Vec3 forward, boolean suppressLegContacts) {
-      return spawn(level, player.getGameProfile(), player, baseCenter, right, up, forward, suppressLegContacts);
+      return spawn(level, player.getGameProfile(), player, baseCenter, right, up, forward, suppressLegContacts, RagdollLimbOptions.defaults());
+   }
+
+   public static @Nullable Doll spawn(ServerLevel level, ServerPlayer player, Vec3 baseCenter, Vec3 right, Vec3 up, Vec3 forward, boolean suppressLegContacts, RagdollLimbOptions limbs) {
+      return spawn(level, player.getGameProfile(), player, baseCenter, right, up, forward, suppressLegContacts, limbs);
    }
 
    private static @Nullable Doll spawn(
@@ -95,7 +119,8 @@ public final class RagdollAssemblyHelper {
       Vec3 right,
       Vec3 up,
       Vec3 forward,
-      boolean suppressLegContacts
+      boolean suppressLegContacts,
+      RagdollLimbOptions limbs
    ) {
       for (PartSpawn part : PARTS) {
          Vec3 center = baseCenter.add(right.scale(part.rightOffset())).add(up.scale(part.upOffset()));
@@ -131,12 +156,12 @@ public final class RagdollAssemblyHelper {
       for (PartSpawn part : PARTS) {
          SpawnedPart spawnedPart = spawnedParts.get(part.bodyPart());
          if (spawnedPart != null) {
-            movePartTo(level, spawnedPart.subLevel(), spawnedPart.worldCenter(), partOrientation(orientation, part));
+            movePartTo(level, spawnedPart.subLevel(), spawnedPart.worldCenter(), partOrientation(orientation, part, limbs.get(part.bodyPart())));
          }
       }
 
       // Pass 3: attach constraints — all parts are now at final positions
-      int constraints = attachSpawnedParts(level, spawnedParts, suppressLegContacts);
+      int constraints = attachSpawnedParts(level, spawnedParts, suppressLegContacts, limbs);
       List<ServerSubLevel> subLevels = spawnedParts.values().stream().map(SpawnedPart::subLevel).toList();
       UUID headId = head.subLevel().getUniqueId();
       DOLL_PARTS_BY_HEAD.put(headId, subLevels.stream().map(ServerSubLevel::getUniqueId).toList());
@@ -210,7 +235,7 @@ public final class RagdollAssemblyHelper {
          return 0;
       }
 
-      int constraints = attachSpawnedParts(level, parts, false);
+      int constraints = attachSpawnedParts(level, parts, false, RagdollLimbOptions.defaults());
       List<ServerSubLevel> restoredSubLevels = parts.values().stream().map(SpawnedPart::subLevel).toList();
       UUID headId = head.getUniqueId();
       DOLL_PARTS_BY_HEAD.put(headId, restoredSubLevels.stream().map(ServerSubLevel::getUniqueId).toList());
@@ -264,7 +289,7 @@ public final class RagdollAssemblyHelper {
       return null;
    }
 
-   private static int attachSpawnedParts(ServerLevel level, Map<BodyPart, SpawnedPart> parts, boolean suppressLegContacts) {
+   private static int attachSpawnedParts(ServerLevel level, Map<BodyPart, SpawnedPart> parts, boolean suppressLegContacts, RagdollLimbOptions limbs) {
       SubLevelPhysicsSystem physicsSystem = SubLevelPhysicsSystem.get(level);
       if (physicsSystem == null) {
          SablePlayerRagdoll.LOGGER.warn("[sable_player_ragdoll] ragdoll constraints skipped: no physics system");
@@ -276,6 +301,7 @@ public final class RagdollAssemblyHelper {
          return 0;
       }
 
+      RagdollLimbConfig head = limbs.get(BodyPart.HEAD);
       int constraints = 0;
       constraints += attach(
          physicsSystem,
@@ -283,19 +309,30 @@ public final class RagdollAssemblyHelper {
          parts.get(BodyPart.HEAD),
          plotAnchor(torso, 0.5, NECK_TORSO_Y, 0.5),
          partPlotAnchor(parts.get(BodyPart.HEAD), 0.5, NECK_HEAD_Y, 0.5),
-         NECK_ANGULAR_STIFFNESS,
-         NECK_ANGULAR_DAMPING,
+         stiffness(head, NECK_ANGULAR_STIFFNESS),
+         damping(head, NECK_ANGULAR_DAMPING),
+         limbRotationRadians(BodyPart.HEAD, head),
          "neck"
       );
-      constraints += attachSideLimb(physicsSystem, torso, parts.get(BodyPart.LEFT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, "left shoulder");
-      constraints += attachSideLimb(physicsSystem, torso, parts.get(BodyPart.RIGHT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, "right shoulder");
-      constraints += attachSideLimb(physicsSystem, torso, parts.get(BodyPart.LEFT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, "left hip");
-      constraints += attachSideLimb(physicsSystem, torso, parts.get(BodyPart.RIGHT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, "right hip");
+      constraints += attachSideLimb(physicsSystem, torso, BodyPart.LEFT_ARM, parts.get(BodyPart.LEFT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, limbs.get(BodyPart.LEFT_ARM), "left shoulder");
+      constraints += attachSideLimb(physicsSystem, torso, BodyPart.RIGHT_ARM, parts.get(BodyPart.RIGHT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, limbs.get(BodyPart.RIGHT_ARM), "right shoulder");
+      constraints += attachSideLimb(physicsSystem, torso, BodyPart.LEFT_LEG, parts.get(BodyPart.LEFT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, limbs.get(BodyPart.LEFT_LEG), "left hip");
+      constraints += attachSideLimb(physicsSystem, torso, BodyPart.RIGHT_LEG, parts.get(BodyPart.RIGHT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, limbs.get(BodyPart.RIGHT_LEG), "right hip");
       suppressInternalContacts(physicsSystem, parts);
       return constraints;
    }
 
-   private static int attachSideLimb(SubLevelPhysicsSystem physicsSystem, SpawnedPart torso, SpawnedPart limb, double torsoY, double limbY, boolean anchorAtLimbCenter, String name) {
+   private static int attachSideLimb(
+      SubLevelPhysicsSystem physicsSystem,
+      SpawnedPart torso,
+      BodyPart bodyPart,
+      SpawnedPart limb,
+      double torsoY,
+      double limbY,
+      boolean anchorAtLimbCenter,
+      @Nullable RagdollLimbConfig config,
+      String name
+   ) {
       if (limb == null) {
          return 0;
       }
@@ -305,7 +342,25 @@ public final class RagdollAssemblyHelper {
       double sideOffset = limb.sideOffset() - torso.sideOffset();
       double torsoX = 0.5 + sideOffset * torsoScale;
       double limbX = 0.44 - sideOffset * limbScale;
-      return attach(physicsSystem, torso, limb, plotAnchor(torso, torsoX, torsoY, 0.5), plotAnchor(limb, limbX, limbY, 0.5), LIMB_ANGULAR_STIFFNESS, LIMB_ANGULAR_DAMPING, name);
+      return attach(
+         physicsSystem,
+         torso,
+         limb,
+         plotAnchor(torso, torsoX, torsoY, 0.5),
+         plotAnchor(limb, limbX, limbY, 0.5),
+         stiffness(config, LIMB_ANGULAR_STIFFNESS),
+         damping(config, LIMB_ANGULAR_DAMPING),
+         limbRotationRadians(bodyPart, config),
+         name
+      );
+   }
+
+   private static double stiffness(@Nullable RagdollLimbConfig config, double fallback) {
+      return config != null && config.angularStiffness().isPresent() ? config.angularStiffness().getAsDouble() : fallback;
+   }
+
+   private static double damping(@Nullable RagdollLimbConfig config, double fallback) {
+      return config != null && config.angularDamping().isPresent() ? config.angularDamping().getAsDouble() : fallback;
    }
 
    private static int attach(
@@ -316,6 +371,7 @@ public final class RagdollAssemblyHelper {
       Vector3d secondAnchor,
       double angularStiffness,
       double angularDamping,
+      Vector3dc angularTarget,
       String name
    ) {
       if (first == null || second == null) {
@@ -334,9 +390,10 @@ public final class RagdollAssemblyHelper {
          handle.setContactsEnabled(false);
          ACTIVE_CONSTRAINTS.add(handle);
 
-         for (ConstraintJointAxis axis : ConstraintJointAxis.ANGULAR) {
-            handle.setMotor(axis, 0.0, angularStiffness, angularDamping, false, 0.0);
-         }
+         // Angular motors hold the joint at its rest angle: pitch -> X, yaw -> Y, roll -> Z (radians).
+         handle.setMotor(ConstraintJointAxis.ANGULAR_X, angularTarget.x(), angularStiffness, angularDamping, false, 0.0);
+         handle.setMotor(ConstraintJointAxis.ANGULAR_Y, angularTarget.y(), angularStiffness, angularDamping, false, 0.0);
+         handle.setMotor(ConstraintJointAxis.ANGULAR_Z, angularTarget.z(), angularStiffness, angularDamping, false, 0.0);
 
          return 1;
       } catch (Throwable error) {
@@ -420,8 +477,28 @@ public final class RagdollAssemblyHelper {
       return vector.lengthSqr() < 1.0E-6 ? fallback : vector.normalize();
    }
 
-   private static Quaterniond partOrientation(Quaterniond baseOrientation, PartSpawn part) {
-      return new Quaterniond(baseOrientation).rotateY(part.yawOffset()).rotateZ(part.rollOffset());
+   private static Quaterniond partOrientation(Quaterniond baseOrientation, PartSpawn part, @Nullable RagdollLimbConfig config) {
+      Vector3d r = limbRotationRadians(part, config);
+      return new Quaterniond(baseOrientation).rotateY(r.y).rotateX(r.x).rotateZ(r.z);
+   }
+
+   // Resolves a limb's rest rotation (radians) as (x=pitch, y=yaw, z=roll), part defaults overridden
+   // per-axis by the config. Used for both the spawn pose and the joint motor's rest target so they agree.
+   private static Vector3d limbRotationRadians(PartSpawn part, @Nullable RagdollLimbConfig config) {
+      double pitch = 0.0;
+      double yaw = part.yawOffset();
+      double roll = part.rollOffset();
+      if (config != null) {
+         if (config.pitchDegrees().isPresent()) pitch = Math.toRadians(config.pitchDegrees().getAsDouble());
+         if (config.yawDegrees().isPresent()) yaw = Math.toRadians(config.yawDegrees().getAsDouble());
+         if (config.rollDegrees().isPresent()) roll = Math.toRadians(config.rollDegrees().getAsDouble());
+      }
+      return new Vector3d(pitch, yaw, roll);
+   }
+
+   private static Vector3d limbRotationRadians(BodyPart bodyPart, @Nullable RagdollLimbConfig config) {
+      PartSpawn part = PART_BY_BODY.get(bodyPart);
+      return part == null ? new Vector3d() : limbRotationRadians(part, config);
    }
 
    private static void removeParts(ServerLevel level, List<ServerSubLevel> subLevels) {
