@@ -16,6 +16,7 @@ own gameplay.
 - Automatic player seating so the camera follows the ragdoll.
 - Playerless dummy ragdolls with position, heading, skin profile, velocity, and
   despawn options.
+- Per-limb spawn pose and joint stiffness/damping control through the public API.
 - Simple API for addon mods to launch ragdolls or query active sessions.
 - Datapack item tag support for weapons that ragdoll players on hit.
 - Test commands for spawning dummies and giving a ragdoll test stick.
@@ -121,6 +122,36 @@ RagdollLaunchOptions options = RagdollLaunchOptions.builder()
 RagdollAPI.launch(player, velocityMetersPerSecond, options);
 ```
 
+### Per-limb pose and joint control
+
+`RagdollLimbOptions` lets you set the spawn pose and joint stiffness/damping for
+individual limbs. All fields are optional, unset limbs use the built-in defaults,
+so you only need to specify what you want to override.
+
+```java
+RagdollLimbOptions limbs = RagdollLimbOptions.builder()
+   .limb(BodyPart.LEFT_ARM,  RagdollLimbConfig.builder().rotation(0, 0, 90))
+   .limb(BodyPart.RIGHT_ARM, RagdollLimbConfig.builder().rotation(0, 0, -90))
+   .limb(BodyPart.HEAD,      RagdollLimbConfig.builder().stiffness(120).damping(10))
+   .build();
+
+RagdollAPI.launch(player, velocity,
+   RagdollLaunchOptions.builder().limbs(limbs).build());
+```
+
+`rotation(pitchDegrees, yawDegrees, rollDegrees)` sets the limb's rest angle. Individual axes can be set separately with
+`.pitch(d)`, `.yaw(d)`, and `.roll(d)`.
+
+The same API is available for dummies:
+
+```java
+RagdollAPI.spawnPlayerless(level, position, headingDegrees, profile, velocity,
+   despawnRule, limbs);
+```
+
+`RagdollKeybindExample` in the source is a worked end-to-end example showing an
+on-foot pose and an elytra pose built with this API.
+
 Playerless ragdolls use `PlayerlessDespawnRule`:
 
 ```java
@@ -143,9 +174,9 @@ cancellable, and listeners can replace the launch velocity.
 `RagdollEndEvent` fires after a player exits a ragdoll. It exposes the player,
 the exit velocity inherited from the ragdoll, and a reason.
 
-The API currently focuses on spawning, despawning, and basic session queries. It
-does not currently expose deep ragdoll internals such as per-body-part inventory
-injection or direct force application to an already active ragdoll.
+The API covers spawning, despawning, per-limb pose/joint control, and basic
+session queries. It does not currently expose direct force application to an
+already active ragdoll or per-body-part inventory injection.
 
 ## License
 
