@@ -98,6 +98,8 @@ RagdollAPI.spawnPlayerless(level, position, headingDegrees, velocity);
 RagdollAPI.spawnPlayerless(level, position, headingDegrees, profile, velocity);
 RagdollAPI.activeSession(player);
 RagdollAPI.isRagdolled(player);
+RagdollAPI.isRagdollSubLevel(subLevelId);
+RagdollAPI.isRagdollSubLevel(subLevel);
 ```
 
 Despawning helpers are available through:
@@ -174,9 +176,12 @@ cancellable, and listeners can replace the launch velocity.
 `RagdollEndEvent` fires after a player exits a ragdoll. It exposes the player,
 the exit velocity inherited from the ragdoll, and a reason.
 
-The API covers spawning, despawning, per-limb pose/joint control, and basic
-session queries. It does not currently expose direct force application to an
-already active ragdoll or per-body-part inventory injection.
+`isRagdollSubLevel` lets other mods check whether a given sub-level (or its UUID)
+belongs to a ragdoll.
+
+The API covers spawning, despawning, per-limb pose/joint control, basic session
+queries, and sub-level identification. It does not currently expose direct force
+application to an already active ragdoll or per-body-part inventory injection.
 
 ## License
 

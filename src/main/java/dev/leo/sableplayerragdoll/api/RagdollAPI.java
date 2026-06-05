@@ -1,9 +1,11 @@
 package dev.leo.sableplayerragdoll.api;
 
 import com.mojang.authlib.GameProfile;
+import dev.leo.sableplayerragdoll.physics.RagdollAssemblyHelper;
 import dev.leo.sableplayerragdoll.physics.RagdollExpireHelper;
 import dev.leo.sableplayerragdoll.physics.RagdollRegistry;
 import dev.leo.sableplayerragdoll.physics.RagdollSessionManager;
+import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
 import java.nio.charset.StandardCharsets;
@@ -111,6 +113,14 @@ public final class RagdollAPI {
 
    public static boolean isRagdolled(ServerPlayer player) {
       return RagdollSessionManager.activeRagdollForPlayer(player.serverLevel(), player.getUUID()) != null;
+   }
+
+   public static boolean isRagdollSubLevel(UUID subLevelId) {
+      return RagdollAssemblyHelper.isRagdollPart(subLevelId);
+   }
+
+   public static boolean isRagdollSubLevel(SubLevel subLevel) {
+      return RagdollAssemblyHelper.isRagdollPart(subLevel.getUniqueId());
    }
 
    private record ActiveRagdollSession(ServerPlayer player, ServerSubLevel subLevel, long startGameTime, List<DespawnCondition> customConditions)
