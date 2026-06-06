@@ -144,6 +144,16 @@ public final class RagdollAPI {
       }
 
       @Override
+      public boolean isDismountLocked() {
+         return !RagdollSessionManager.canManualDismount(player.serverLevel(), subLevel);
+      }
+
+      @Override
+      public void setDismountLocked(boolean locked) {
+         RagdollSessionManager.setDismountLocked(subLevel, locked);
+      }
+
+      @Override
       public void release() {
          ServerLevel level = player.serverLevel();
          SubLevelPhysicsSystem physicsSystem = SubLevelPhysicsSystem.get(level);

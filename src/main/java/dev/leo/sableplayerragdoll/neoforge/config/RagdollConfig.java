@@ -34,6 +34,9 @@ public final class RagdollConfig {
    public static final BooleanValue ALLOW_MANUAL_TRIGGER = BUILDER.translation("sable_player_ragdoll.configuration.allow_manual_trigger")
       .comment("Allow players to trigger their own ragdoll with the client keybind.")
       .define("allowManualTrigger", true);
+   public static final IntValue MIN_DISMOUNT_TICKS = BUILDER.translation("sable_player_ragdoll.configuration.min_dismount_ticks")
+      .comment("Minimum ticks after ragdoll start before the player can manually exit. 60 = 3 seconds.")
+      .defineInRange("minDismountTicks", 60, 0, 1200);
 
    static {
       BUILDER.pop();
@@ -113,6 +116,7 @@ public final class RagdollConfig {
       RagdollSettings.setRagdollMaxLaunchSpeed((Double) RAGDOLL_MAX_LAUNCH_SPEED.get());
       RagdollSettings.setAutoSeatOnTrigger((Boolean) AUTO_SEAT_ON_TRIGGER.get());
       RagdollSettings.setAllowManualTrigger((Boolean) ALLOW_MANUAL_TRIGGER.get());
+      RagdollSettings.setMinDismountTicks((Integer) MIN_DISMOUNT_TICKS.get());
       RagdollSettings.setExpireAfterDuration((Boolean) EXPIRE_AFTER_DURATION.get());
       RagdollSettings.setRagdollDurationTicks((Integer) RAGDOLL_DURATION_TICKS.get());
       RagdollSettings.setExpireWhenSlow((Boolean) EXPIRE_WHEN_SLOW.get());

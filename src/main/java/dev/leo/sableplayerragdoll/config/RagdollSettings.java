@@ -16,6 +16,7 @@ public final class RagdollSettings {
    private static boolean affectCreative = true;
    private static boolean autoSeatOnTrigger = true;
    private static boolean allowManualTrigger = true;
+   private static int minDismountTicks = 60;
    private static boolean debugLogging = true;
 
    private RagdollSettings() {
@@ -65,6 +66,9 @@ public final class RagdollSettings {
 
    public static boolean allowManualTrigger() { return allowManualTrigger; }
    public static void setAllowManualTrigger(boolean v) { allowManualTrigger = v; }
+
+   public static int minDismountTicks() { return minDismountTicks; }
+   public static void setMinDismountTicks(int v) { minDismountTicks = Math.max(0, v); }
 
    public static boolean debugLogging() { return debugLogging; }
    public static void setDebugLogging(boolean v) { debugLogging = v; }

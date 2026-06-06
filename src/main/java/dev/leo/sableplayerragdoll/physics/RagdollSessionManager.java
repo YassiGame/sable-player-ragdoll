@@ -116,8 +116,11 @@ public final class RagdollSessionManager {
    public static boolean canManualDismount(ServerLevel level, ServerSubLevel subLevel) {
       if (DISMOUNT_LOCKED.contains(subLevel.getUniqueId())) return false;
       CompoundTag tag = subLevel.getUserDataTag();
-      return tag != null && (!RagdollSettings.expireAfterDuration()
-            || level.getGameTime() - tag.getLong(START_TICK_KEY) >= (long) scaledRagdollDurationTicks(tag));
+      if (tag == null) return false;
+      long elapsed = level.getGameTime() - tag.getLong(START_TICK_KEY);
+      if (elapsed < (long) RagdollSettings.minDismountTicks()) return false;
+      return !RagdollSettings.expireAfterDuration()
+            || elapsed >= (long) scaledRagdollDurationTicks(tag);
    }
 
    public static void tickActiveRagdolls(ServerLevel level) {
@@ -287,6 +290,16 @@ public final class RagdollSessionManager {
 
          org.joml.Vector3d velocity = handle.getLinearVelocity(new org.joml.Vector3d());
          return new Vec3(velocity.x / 20.0, velocity.y / 20.0, velocity.z / 20.0);
+      }
+
+      @Override
+      public boolean isDismountLocked() {
+         return !RagdollSessionManager.canManualDismount(player.serverLevel(), subLevel);
+      }
+
+      @Override
+      public void setDismountLocked(boolean locked) {
+         RagdollSessionManager.setDismountLocked(subLevel, locked);
       }
 
       @Override
