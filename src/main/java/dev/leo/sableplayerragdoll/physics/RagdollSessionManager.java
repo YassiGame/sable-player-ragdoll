@@ -35,6 +35,7 @@ public final class RagdollSessionManager {
    private static final int NON_PLAYER_DURATION_SCALE = 3;
    private static final Set<UUID> ACTIVE = ConcurrentHashMap.newKeySet();
    private static final ConcurrentHashMap<UUID, List<DespawnCondition>> CUSTOM_DESPAWN_CONDITIONS = new ConcurrentHashMap<>();
+   private static final Set<UUID> DISMOUNT_LOCKED = ConcurrentHashMap.newKeySet();
 
    private RagdollSessionManager() {
    }
@@ -65,6 +66,7 @@ public final class RagdollSessionManager {
    public static void unregister(ServerSubLevel subLevel) {
       ACTIVE.remove(subLevel.getUniqueId());
       CUSTOM_DESPAWN_CONDITIONS.remove(subLevel.getUniqueId());
+      DISMOUNT_LOCKED.remove(subLevel.getUniqueId());
    }
 
    public static void setCustomDespawnConditions(ServerSubLevel subLevel, List<DespawnCondition> conditions) {
@@ -103,7 +105,16 @@ public final class RagdollSessionManager {
       return null;
    }
 
+   public static void setDismountLocked(ServerSubLevel subLevel, boolean locked) {
+      if (locked) {
+         DISMOUNT_LOCKED.add(subLevel.getUniqueId());
+      } else {
+         DISMOUNT_LOCKED.remove(subLevel.getUniqueId());
+      }
+   }
+
    public static boolean canManualDismount(ServerLevel level, ServerSubLevel subLevel) {
+      if (DISMOUNT_LOCKED.contains(subLevel.getUniqueId())) return false;
       CompoundTag tag = subLevel.getUserDataTag();
       return tag != null && (!RagdollSettings.expireAfterDuration()
             || level.getGameTime() - tag.getLong(START_TICK_KEY) >= (long) scaledRagdollDurationTicks(tag));

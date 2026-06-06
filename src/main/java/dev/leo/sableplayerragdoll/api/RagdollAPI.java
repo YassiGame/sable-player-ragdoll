@@ -45,6 +45,7 @@ public final class RagdollAPI {
       ServerSubLevel body = RagdollRegistry.launch(level, player, linear, angular, player.isFallFlying(), resolvedOptions.autoSeat(), resolvedOptions.limbs());
       if (body == null) return null;
       RagdollSessionManager.setCustomDespawnConditions(body, resolvedOptions.despawnConditions());
+      if (resolvedOptions.lockDismount()) RagdollSessionManager.setDismountLocked(body, true);
       return new ActiveRagdollSession(player, body, level.getGameTime(), resolvedOptions.despawnConditions());
    }
 

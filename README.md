@@ -119,9 +119,26 @@ Player launches can be customized per call with `RagdollLaunchOptions`:
 RagdollLaunchOptions options = RagdollLaunchOptions.builder()
    .autoSeat(false)
    .despawnConditions(List.of(DespawnCondition.afterTicks(80)))
+   .lockDismount(false)
    .build();
 
 RagdollAPI.launch(player, velocityMetersPerSecond, options);
+```
+
+`lockDismount(true)` prevents the player from manually exiting the ragdoll via
+the keybind or interaction. The ragdoll will still end if the despawn conditions
+trigger or if `session.release()` is called. To keep a player in ragdoll
+indefinitely until released by code:
+
+```java
+RagdollLaunchOptions options = RagdollLaunchOptions.builder()
+   .lockDismount(true)
+   .despawnConditions(List.of(DespawnCondition.never()))
+   .build();
+
+RagdollSession session = RagdollAPI.launch(player, velocity, options);
+// later, when you want to release:
+session.release();
 ```
 
 ### Per-limb pose and joint control
@@ -179,9 +196,10 @@ the exit velocity inherited from the ragdoll, and a reason.
 `isRagdollSubLevel` lets other mods check whether a given sub-level (or its UUID)
 belongs to a ragdoll.
 
-The API covers spawning, despawning, per-limb pose/joint control, basic session
-queries, and sub-level identification. It does not currently expose direct force
-application to an already active ragdoll or per-body-part inventory injection.
+The API covers spawning, despawning, per-limb pose/joint control, session
+locking, basic session queries, and sub-level identification. It does not
+currently expose direct force application to an already active ragdoll or
+per-body-part inventory injection.
 
 ## License
 

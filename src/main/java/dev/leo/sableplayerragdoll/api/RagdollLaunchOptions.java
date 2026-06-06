@@ -3,7 +3,7 @@ package dev.leo.sableplayerragdoll.api;
 import dev.leo.sableplayerragdoll.config.RagdollSettings;
 import java.util.List;
 
-public record RagdollLaunchOptions(boolean autoSeat, List<DespawnCondition> despawnConditions, RagdollLimbOptions limbs) {
+public record RagdollLaunchOptions(boolean autoSeat, List<DespawnCondition> despawnConditions, RagdollLimbOptions limbs, boolean lockDismount) {
 
    public static RagdollLaunchOptions defaults() {
       return builder().build();
@@ -17,6 +17,7 @@ public record RagdollLaunchOptions(boolean autoSeat, List<DespawnCondition> desp
       private boolean autoSeat = RagdollSettings.autoSeatOnTrigger();
       private List<DespawnCondition> despawnConditions = List.of();
       private RagdollLimbOptions limbs = RagdollLimbOptions.defaults();
+      private boolean lockDismount = false;
 
       private Builder() {
       }
@@ -36,8 +37,13 @@ public record RagdollLaunchOptions(boolean autoSeat, List<DespawnCondition> desp
          return this;
       }
 
+      public Builder lockDismount(boolean lockDismount) {
+         this.lockDismount = lockDismount;
+         return this;
+      }
+
       public RagdollLaunchOptions build() {
-         return new RagdollLaunchOptions(this.autoSeat, this.despawnConditions, this.limbs);
+         return new RagdollLaunchOptions(this.autoSeat, this.despawnConditions, this.limbs, this.lockDismount);
       }
    }
 }
