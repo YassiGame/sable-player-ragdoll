@@ -1,34 +1,31 @@
 package dev.leo.sableplayerragdoll.neoforge.client;
 
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity;
-import dev.leo.sableplayerragdoll.neoforge.network.RagdollTorsoGrabPacket;
-import dev.ryanhcode.sable.Sable;
+import dev.leo.sableplayerragdoll.neoforge.network.RagdollGrabPacket;
 import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent.Post;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
-import org.joml.Vector3d;
 
-public final class RagdollTorsoGrabClient {
-   private static final double MAX_GRAB_RANGE = 5.0;
+public final class RagdollGrabClient {
    @Nullable
    private static BlockPos activePos;
 
-   private RagdollTorsoGrabClient() {
+   private RagdollGrabClient() {
    }
 
    public static void init() {
-      NeoForge.EVENT_BUS.addListener(RagdollTorsoGrabClient::onClientTick);
+      NeoForge.EVENT_BUS.addListener(RagdollGrabClient::onClientTick);
+      NeoForge.EVENT_BUS.addListener(RagdollGrabClient::onScroll);
    }
 
    private static void onClientTick(Post event) {
@@ -37,20 +34,33 @@ public final class RagdollTorsoGrabClient {
       if (player == null || minecraft.level == null || player.isSpectator()) { stopGrab(); return; }
       if (player.isPassenger()) { stopGrab(); return; }
       if (!minecraft.options.keyUse.isDown()) { stopGrab(); return; }
-      if (activePos != null) return;
+      if (!player.getMainHandItem().isEmpty()) { stopGrab(); return; }
+
+      if (activePos != null) {
+         player.setSprinting(false);
+         if (!minecraft.gameRenderer.getMainCamera().isDetached()) {
+            player.swingTime = 0;
+            player.swinging = true;
+            player.swingingArm = InteractionHand.MAIN_HAND;
+         }
+         return;
+      }
 
       BlockPos partPos = targetedPart(minecraft);
       if (partPos == null) return;
 
-      float desiredRange = desiredRange(player, partPos);
       activePos = partPos;
-      PacketDistributor.sendToServer(new RagdollTorsoGrabPacket(partPos, desiredRange, false), new CustomPacketPayload[0]);
+      PacketDistributor.sendToServer(new RagdollGrabPacket(partPos, false), new CustomPacketPayload[0]);
       player.swing(InteractionHand.MAIN_HAND);
+   }
+
+   private static void onScroll(InputEvent.MouseScrollingEvent event) {
+      if (activePos != null) event.setCanceled(true);
    }
 
    private static void stopGrab() {
       if (activePos != null) {
-         PacketDistributor.sendToServer(new RagdollTorsoGrabPacket(activePos, -1.0F, true), new CustomPacketPayload[0]);
+         PacketDistributor.sendToServer(new RagdollGrabPacket(activePos, true), new CustomPacketPayload[0]);
          activePos = null;
       }
    }
@@ -60,16 +70,6 @@ public final class RagdollTorsoGrabClient {
       if (!(minecraft.hitResult instanceof BlockHitResult blockHit) || blockHit.getType() == HitResult.Type.MISS || minecraft.level == null) return null;
       BlockPos pos = blockHit.getBlockPos();
       BlockEntity blockEntity = minecraft.level.getBlockEntity(pos);
-      return blockEntity instanceof RagdollPartBlockEntity ragdollPart && ragdollPart.canBeGrabbed() ? pos : null;
-   }
-
-   private static float desiredRange(LocalPlayer player, BlockPos partPos) {
-      if (player.level().getBlockEntity(partPos) instanceof RagdollPartBlockEntity ragdollPart) {
-         Vector3d projected = Sable.HELPER.projectOutOfSubLevel(player.level(), ragdollPart.grabCenter());
-         Vec3 eyePosition = player.getEyePosition();
-         double maxRange = Math.min(MAX_GRAB_RANGE, player.getAttribute(Attributes.BLOCK_INTERACTION_RANGE).getValue());
-         return (float) Math.min(projected.distance(eyePosition.x, eyePosition.y, eyePosition.z), maxRange);
-      }
-      return 2.0F;
+      return blockEntity instanceof RagdollPartBlockEntity ? pos : null;
    }
 }

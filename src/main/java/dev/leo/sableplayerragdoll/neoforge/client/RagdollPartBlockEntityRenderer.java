@@ -219,7 +219,7 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
       }
 
       @Override
-      public ResourceLocation getElytraTexture(net.minecraft.world.item.ItemStack stack, RagdollDollEntity entity) {
+      public ResourceLocation getElytraTexture(ItemStack stack, RagdollDollEntity entity) {
          return currentCapeTexture != null ? currentCapeTexture : super.getElytraTexture(stack, entity);
       }
    }

@@ -2,6 +2,7 @@ package dev.leo.sableplayerragdoll.block.entity;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import dev.leo.sableplayerragdoll.physics.RagdollAssemblyHelper;
 import dev.leo.sableplayerragdoll.physics.RagdollControlHelper;
 import dev.leo.sableplayerragdoll.physics.RagdollRegistry;
 import dev.ryanhcode.sable.Sable;
@@ -23,7 +24,6 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.util.Mth;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -39,11 +39,11 @@ import org.joml.Quaterniond;
 import org.joml.Vector3d;
 
 public final class RagdollPartBlockEntity extends BlockEntity implements BlockEntitySubLevelActor {
-   private static final double GRAB_STIFFNESS = 70.0;
-   private static final double GRAB_DAMPING = 12.0;
-   private static final double GRAB_ANGULAR_DAMPING = 2.0;
-   private static final double GRAB_MAX_FORCE = 180.0;
-   private static final double GRAB_MAX_RANGE = 5.0;
+   private static final double GRAB_STIFFNESS = 500.0;
+   private static final double GRAB_DAMPING = 50.0;
+   private static final double GRAB_MAX_FORCE = 200.0;
+   private static final double GRAB_HOLD_DISTANCE = 1.0;
+   private static final double GRAB_ANCHOR_Y_OFFSET = -0.6;
    private BodyPart bodyPart = BodyPart.TORSO;
    @Nullable
    private UUID skinUuid;
@@ -87,27 +87,12 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
       return this.bodyPart;
    }
 
-   public boolean canBeGrabbed() {
-      return true;
-   }
-
-   public void startTorsoGrab(UUID playerId, float desiredRange) {
-      if (!this.canBeGrabbed()) {
-         return;
-      }
-
-      this.grabbers.compute(playerId, (unused, existing) -> {
-         if (existing != null) {
-            existing.setDesiredRange(desiredRange);
-            return existing;
-         }
-
-         return new GrabConstraint(playerId, desiredRange);
-      });
+   public void startGrab(UUID playerId) {
+      this.grabbers.computeIfAbsent(playerId, GrabConstraint::new);
       this.setChanged();
    }
 
-   public void stopTorsoGrab(UUID playerId) {
+   public void stopGrab(UUID playerId) {
       GrabConstraint constraint = this.grabbers.remove(playerId);
       if (constraint != null) {
          constraint.removeJoint();
@@ -117,11 +102,6 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
 
    @Override
    public void sable$physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double timeStep) {
-      if (!this.canBeGrabbed()) {
-         this.removeAllGrabbers();
-         return;
-      }
-
       this.checkGrabbers();
       if (this.bodyPart == BodyPart.HEAD && subLevel.getLevel() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
          RagdollRegistry.tryRestoreOnLoad(serverLevel, subLevel);
@@ -262,13 +242,11 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
 
    private final class GrabConstraint {
       private final UUID playerId;
-      private float desiredRange;
       @Nullable
       private PhysicsConstraintHandle constraintHandle;
 
-      private GrabConstraint(UUID playerId, float desiredRange) {
+      private GrabConstraint(UUID playerId) {
          this.playerId = playerId;
-         this.setDesiredRange(desiredRange);
       }
 
       private void physicsTick(ServerSubLevel subLevel) {
@@ -283,15 +261,15 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
          }
 
          SubLevel standingSubLevel = Sable.HELPER.getTrackingSubLevel(player);
-         if (standingSubLevel == subLevel) {
+         if (standingSubLevel != null && RagdollAssemblyHelper.isRagdollPart(standingSubLevel.getUniqueId())) {
             return;
          }
 
-         Vector3d constraintGoal = JOMLConversion.toJOML(player.getEyePosition().add(player.getLookAngle().scale(Math.max(2.0, this.desiredRange))));
+         Vector3d constraintGoal = JOMLConversion.toJOML(player.getEyePosition().add(0, GRAB_ANCHOR_Y_OFFSET, 0).add(player.getLookAngle().scale(GRAB_HOLD_DISTANCE)));
          Vector3d constraintPosition = RagdollPartBlockEntity.this.grabCenter();
          double validRange = player.getAttribute(Attributes.BLOCK_INTERACTION_RANGE).getValue() + 2.0;
          double currentDistance = Sable.HELPER.distanceSquaredWithSubLevels(RagdollPartBlockEntity.this.level, constraintGoal, constraintPosition);
-         if (Mth.equal(-1.0F, this.desiredRange) || currentDistance > validRange * validRange) {
+         if (currentDistance > validRange * validRange) {
             return;
          }
 
@@ -307,14 +285,6 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
          for (ConstraintJointAxis axis : ConstraintJointAxis.LINEAR) {
             this.constraintHandle.setMotor(axis, 0.0, GRAB_STIFFNESS, GRAB_DAMPING, true, GRAB_MAX_FORCE);
          }
-
-         for (ConstraintJointAxis axis : ConstraintJointAxis.ANGULAR) {
-            this.constraintHandle.setMotor(axis, 0.0, 0.0, GRAB_ANGULAR_DAMPING, true, GRAB_MAX_FORCE);
-         }
-      }
-
-      private void setDesiredRange(float desiredRange) {
-         this.desiredRange = (float)Math.clamp(desiredRange, 1.0F, GRAB_MAX_RANGE);
       }
 
       private void removeJoint() {

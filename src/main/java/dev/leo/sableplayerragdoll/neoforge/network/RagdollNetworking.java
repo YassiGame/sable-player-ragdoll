@@ -15,8 +15,9 @@ public final class RagdollNetworking {
       PayloadRegistrar registrar = event.registrar("sable_player_ragdoll");
       registrar.playToClient(RagdollUnlockedCameraPacket.TYPE, RagdollUnlockedCameraPacket.STREAM_CODEC, RagdollUnlockedCameraPacket::handle);
       registrar.playToClient(RagdollResetCameraPacket.TYPE, RagdollResetCameraPacket.STREAM_CODEC, RagdollResetCameraPacket::handle);
+      registrar.playToClient(RagdollGrabSyncPacket.TYPE, RagdollGrabSyncPacket.STREAM_CODEC, RagdollGrabSyncPacket::handle);
       registrar.playToServer(RagdollTriggerPacket.TYPE, RagdollTriggerPacket.STREAM_CODEC, RagdollTriggerPacket::handle);
-      registrar.playToServer(RagdollTorsoGrabPacket.TYPE, RagdollTorsoGrabPacket.STREAM_CODEC, RagdollTorsoGrabPacket::handle);
+      registrar.playToServer(RagdollGrabPacket.TYPE, RagdollGrabPacket.STREAM_CODEC, RagdollGrabPacket::handle);
       registrar.playToServer(RagdollInputPacket.TYPE, RagdollInputPacket.STREAM_CODEC, RagdollInputPacket::handle);
    }
 

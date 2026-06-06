@@ -44,8 +44,13 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -63,6 +68,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent.Post;
 import java.util.Collection;
+import java.util.UUID;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 
 @Mod("sable_player_ragdoll")
@@ -132,12 +138,12 @@ public final class SablePlayerRagdollNeoForge {
       if (!(event.getLevel() instanceof ServerLevel level)) return;
       if (event.getEntity() instanceof ServerPlayer player && isRagdolled(level, player)) {
          event.setCanceled(true);
-         return;
       }
-      SubLevel subLevel = Sable.HELPER.getContaining(level, event.getPos());
-      if (subLevel != null && RagdollAssemblyHelper.isRagdollPart(subLevel.getUniqueId())) {
-         event.setCanceled(true);
-      }
+   }
+
+   private static boolean isInRagdollPlot(ServerLevel level, BlockPos pos) {
+      SubLevel subLevel = Sable.HELPER.getContaining(level, pos);
+      return subLevel != null && RagdollAssemblyHelper.isRagdollPart(subLevel.getUniqueId());
    }
 
    private static void onBlockBreak(BlockEvent.BreakEvent event) {
@@ -162,6 +168,13 @@ public final class SablePlayerRagdollNeoForge {
       if (isRagdolled(event)) {
          event.setCancellationResult(InteractionResult.FAIL);
          event.setCanceled(true);
+         return;
+      }
+      if (!(event.getLevel() instanceof ServerLevel level)) return;
+      BlockPos target = event.getPos().relative(event.getFace());
+      if (isInRagdollPlot(level, target) || isInRagdollPlot(level, event.getPos())) {
+         event.setCancellationResult(InteractionResult.FAIL);
+         event.setCanceled(true);
       }
    }
 
@@ -169,6 +182,18 @@ public final class SablePlayerRagdollNeoForge {
       if (isRagdolled(event)) {
          event.setCancellationResult(InteractionResult.FAIL);
          event.setCanceled(true);
+         return;
+      }
+      if (!(event.getLevel() instanceof ServerLevel level)) return;
+      ItemStack held = event.getEntity().getItemInHand(event.getHand());
+      if (!(held.getItem() instanceof BucketItem) || held.getItem() == Items.BUCKET) return;
+      HitResult hit = event.getEntity().pick(5.0, 0.0f, true);
+      if (hit instanceof BlockHitResult blockHit) {
+         BlockPos target = blockHit.getBlockPos().relative(blockHit.getDirection());
+         if (isInRagdollPlot(level, target) || isInRagdollPlot(level, blockHit.getBlockPos())) {
+            event.setCancellationResult(InteractionResult.FAIL);
+            event.setCanceled(true);
+         }
       }
    }
 
@@ -314,12 +339,12 @@ public final class SablePlayerRagdollNeoForge {
 
    private static void equipTorso(ServerLevel level, PlayerlessRagdollSession session, ItemStack stack) {
       if (session == null) return;
-      java.util.UUID torsoId = RagdollAssemblyHelper.linkedTorso(session.id());
+      UUID torsoId = RagdollAssemblyHelper.linkedTorso(session.id());
       if (torsoId == null) return;
       SubLevel torsoSubLevel = SubLevelContainer.getContainer(level).getSubLevel(torsoId);
       if (torsoSubLevel == null) return;
       if (torsoSubLevel.getLevel().getBlockEntity(torsoSubLevel.getPlot().getCenterBlock()) instanceof RagdollPartBlockEntity part) {
-         part.setItemForSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, stack);
+         part.setItemForSlot(EquipmentSlot.CHEST, stack);
       }
    }
 
