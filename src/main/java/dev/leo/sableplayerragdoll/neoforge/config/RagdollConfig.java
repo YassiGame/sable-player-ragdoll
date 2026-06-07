@@ -1,6 +1,11 @@
 package dev.leo.sableplayerragdoll.neoforge.config;
 
 import dev.leo.sableplayerragdoll.config.RagdollSettings;
+import dev.ryanhcode.sable.physics.config.block_properties.BlockStateConditionSet;
+import dev.ryanhcode.sable.physics.config.block_properties.PhysicsBlockPropertiesDefinition;
+import dev.ryanhcode.sable.physics.config.block_properties.PhysicsBlockPropertiesDefinitionLoader;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.ExtraCodecs;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig.Type;
 import net.neoforged.fml.event.config.ModConfigEvent.Loading;
@@ -10,6 +15,10 @@ import net.neoforged.neoforge.common.ModConfigSpec.BooleanValue;
 import net.neoforged.neoforge.common.ModConfigSpec.Builder;
 import net.neoforged.neoforge.common.ModConfigSpec.DoubleValue;
 import net.neoforged.neoforge.common.ModConfigSpec.IntValue;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
 
 public final class RagdollConfig {
    private static final Builder BUILDER = new Builder();
@@ -79,6 +88,24 @@ public final class RagdollConfig {
 
    static {
       BUILDER.pop();
+      BUILDER.translation("sable_player_ragdoll.configuration.body_mass").comment("Physics mass per body part (kg). Minimum 0.1.").push("body_mass");
+   }
+
+   public static final DoubleValue MASS_HEAD = BUILDER.translation("sable_player_ragdoll.configuration.mass_head")
+      .comment("Mass of the head.")
+      .defineInRange("massHead", 0.5, 0.1, 100.0);
+   public static final DoubleValue MASS_TORSO = BUILDER.translation("sable_player_ragdoll.configuration.mass_torso")
+      .comment("Mass of the torso.")
+      .defineInRange("massTorso", 2.0, 0.1, 100.0);
+   public static final DoubleValue MASS_ARM = BUILDER.translation("sable_player_ragdoll.configuration.mass_arm")
+      .comment("Mass of each arm.")
+      .defineInRange("massArm", 1.0, 0.1, 100.0);
+   public static final DoubleValue MASS_LEG = BUILDER.translation("sable_player_ragdoll.configuration.mass_leg")
+      .comment("Mass of each leg.")
+      .defineInRange("massLeg", 1.5, 0.1, 100.0);
+
+   static {
+      BUILDER.pop();
       BUILDER.translation("sable_player_ragdoll.configuration.debug").comment("Developer options.").push("debug");
    }
 
@@ -124,5 +151,31 @@ public final class RagdollConfig {
       RagdollSettings.setExpireAfterSafetyTimeout((Boolean) EXPIRE_AFTER_SAFETY_TIMEOUT.get());
       RagdollSettings.setReleaseSpeedThreshold((Double) RELEASE_SPEED_THRESHOLD.get());
       RagdollSettings.setDebugLogging((Boolean) DEBUG_LOGGING.get());
+      RagdollSettings.setMassHead((Double) MASS_HEAD.get());
+      RagdollSettings.setMassTorso((Double) MASS_TORSO.get());
+      RagdollSettings.setMassArm((Double) MASS_ARM.get());
+      RagdollSettings.setMassLeg((Double) MASS_LEG.get());
+      applyBodyMasses();
+   }
+
+   private static void applyBodyMasses() {
+      ResourceLocation massKey = ResourceLocation.fromNamespaceAndPath("sable", "mass");
+      Map<BlockStateConditionSet, Map<ResourceLocation, Object>> overrides = new LinkedHashMap<>();
+      overrides.put(conditionSet("body_part=head"),      Map.of(massKey, RagdollSettings.massHead()));
+      overrides.put(conditionSet("body_part=left_arm"),  Map.of(massKey, RagdollSettings.massArm()));
+      overrides.put(conditionSet("body_part=right_arm"), Map.of(massKey, RagdollSettings.massArm()));
+      overrides.put(conditionSet("body_part=left_leg"),  Map.of(massKey, RagdollSettings.massLeg()));
+      overrides.put(conditionSet("body_part=right_leg"), Map.of(massKey, RagdollSettings.massLeg()));
+      PhysicsBlockPropertiesDefinition def = new PhysicsBlockPropertiesDefinition(
+         new ExtraCodecs.TagOrElementLocation(ResourceLocation.fromNamespaceAndPath("sable_player_ragdoll", "ragdoll_part"), false),
+         2000,
+         Map.of(massKey, RagdollSettings.massTorso()),
+         Optional.of(overrides)
+      );
+      PhysicsBlockPropertiesDefinitionLoader.applyToBlocks(def);
+   }
+
+   private static BlockStateConditionSet conditionSet(String condition) {
+      return BlockStateConditionSet.parse(condition).getOrThrow();
    }
 }
