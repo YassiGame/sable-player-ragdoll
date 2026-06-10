@@ -17,6 +17,11 @@ public final class RagdollSettings {
    private static boolean autoSeatOnTrigger = true;
    private static boolean allowManualTrigger = true;
    private static int minDismountTicks = 60;
+   private static boolean impactDamageEnabled = true;
+   private static double impactDamageThreshold = 12.0;
+   private static double impactDamageMultiplier = 0.75;
+   private static double impactDamageMax = 20.0;
+   private static int impactDamageCooldownTicks = 10;
 
    private static double massHead = 0.5;
    private static double massTorso = 2.0;
@@ -74,6 +79,21 @@ public final class RagdollSettings {
 
    public static int minDismountTicks() { return minDismountTicks; }
    public static void setMinDismountTicks(int v) { minDismountTicks = Math.max(0, v); }
+
+   public static boolean impactDamageEnabled() { return impactDamageEnabled; }
+   public static void setImpactDamageEnabled(boolean v) { impactDamageEnabled = v; }
+
+   public static double impactDamageThreshold() { return impactDamageThreshold; }
+   public static void setImpactDamageThreshold(double v) { impactDamageThreshold = Math.max(0.0, v); }
+
+   public static double impactDamageMultiplier() { return impactDamageMultiplier; }
+   public static void setImpactDamageMultiplier(double v) { impactDamageMultiplier = Math.max(0.0, v); }
+
+   public static double impactDamageMax() { return impactDamageMax; }
+   public static void setImpactDamageMax(double v) { impactDamageMax = Math.max(0.0, v); }
+
+   public static int impactDamageCooldownTicks() { return impactDamageCooldownTicks; }
+   public static void setImpactDamageCooldownTicks(int v) { impactDamageCooldownTicks = Math.max(0, v); }
 
    public static double massHead() { return massHead; }
    public static void setMassHead(double v) { massHead = Math.max(0.1, v); }

@@ -20,6 +20,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 public final class RagdollSessionManager {
    public static final String RAGDOLL_USER_TAG = "sable_player_ragdoll";
@@ -36,6 +37,8 @@ public final class RagdollSessionManager {
    private static final Set<UUID> ACTIVE = ConcurrentHashMap.newKeySet();
    private static final ConcurrentHashMap<UUID, List<DespawnCondition>> CUSTOM_DESPAWN_CONDITIONS = new ConcurrentHashMap<>();
    private static final Set<UUID> DISMOUNT_LOCKED = ConcurrentHashMap.newKeySet();
+   private static final ConcurrentHashMap<UUID, Vector3d> LAST_VELOCITIES = new ConcurrentHashMap<>();
+   private static final ConcurrentHashMap<UUID, Long> NEXT_IMPACT_DAMAGE_TICKS = new ConcurrentHashMap<>();
 
    private RagdollSessionManager() {
    }
@@ -67,6 +70,8 @@ public final class RagdollSessionManager {
       ACTIVE.remove(subLevel.getUniqueId());
       CUSTOM_DESPAWN_CONDITIONS.remove(subLevel.getUniqueId());
       DISMOUNT_LOCKED.remove(subLevel.getUniqueId());
+      LAST_VELOCITIES.remove(subLevel.getUniqueId());
+      NEXT_IMPACT_DAMAGE_TICKS.remove(subLevel.getUniqueId());
    }
 
    public static void setCustomDespawnConditions(ServerSubLevel subLevel, List<DespawnCondition> conditions) {
@@ -134,8 +139,12 @@ public final class RagdollSessionManager {
                   if (subLevel instanceof ServerSubLevel serverSubLevel) {
                      if (serverSubLevel.isRemoved() || !isMarkedRagdoll(serverSubLevel)) {
                         ACTIVE.remove(id);
+                        LAST_VELOCITIES.remove(id);
+                        NEXT_IMPACT_DAMAGE_TICKS.remove(id);
                      } else if (shouldExpire(level, physicsSystem, serverSubLevel)) {
                         RagdollExpireHelper.expire(physicsSystem, level, serverSubLevel, reasonFor(serverSubLevel, level, physicsSystem));
+                     } else {
+                        applyImpactDamage(level, physicsSystem, serverSubLevel);
                      }
                   }
                }
@@ -277,6 +286,40 @@ public final class RagdollSessionManager {
    private static double sampleSpeedMetersPerSecond(SubLevelPhysicsSystem physicsSystem, ServerSubLevel subLevel) {
       RigidBodyHandle handle = physicsSystem.getPhysicsHandle(subLevel);
       return handle != null && handle.isValid() ? handle.getLinearVelocity().length() : 0.0;
+   }
+
+   private static @Nullable Vector3d sampleVelocityMetersPerSecond(SubLevelPhysicsSystem physicsSystem, ServerSubLevel subLevel) {
+      RigidBodyHandle handle = physicsSystem.getPhysicsHandle(subLevel);
+      return handle != null && handle.isValid() ? handle.getLinearVelocity(new Vector3d()) : null;
+   }
+
+   private static void applyImpactDamage(ServerLevel level, SubLevelPhysicsSystem physicsSystem, ServerSubLevel subLevel) {
+      if (!RagdollSettings.impactDamageEnabled()) return;
+      UUID playerId = getPlayerId(subLevel);
+      if (playerId == null) return;
+      ServerPlayer player = level.getServer().getPlayerList().getPlayer(playerId);
+      if (player == null || player.isDeadOrDying() || player.isSpectator()) return;
+
+      UUID subLevelId = subLevel.getUniqueId();
+      Vector3d velocity = sampleVelocityMetersPerSecond(physicsSystem, subLevel);
+      if (velocity == null) return;
+
+      Vector3d previous = LAST_VELOCITIES.put(subLevelId, new Vector3d(velocity));
+      if (previous == null) return;
+
+      double delta = previous.sub(velocity).length();
+      double threshold = RagdollSettings.impactDamageThreshold();
+      if (delta <= threshold) return;
+
+      long gameTime = level.getGameTime();
+      if (gameTime < NEXT_IMPACT_DAMAGE_TICKS.getOrDefault(subLevelId, Long.MIN_VALUE)) return;
+
+      float damage = (float) Math.min(RagdollSettings.impactDamageMax(), (delta - threshold) * RagdollSettings.impactDamageMultiplier());
+      if (damage <= 0.0F) return;
+
+      if (player.hurt(player.damageSources().flyIntoWall(), damage)) {
+         NEXT_IMPACT_DAMAGE_TICKS.put(subLevelId, gameTime + (long) RagdollSettings.impactDamageCooldownTicks());
+      }
    }
 
    private record ManagedRagdollSession(ServerPlayer player, ServerSubLevel subLevel, long elapsedTicks, SubLevelPhysicsSystem physicsSystem) implements RagdollSession {

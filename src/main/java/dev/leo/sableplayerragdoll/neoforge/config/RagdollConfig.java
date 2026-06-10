@@ -64,6 +64,27 @@ public final class RagdollConfig {
 
    static {
       BUILDER.pop();
+      BUILDER.translation("sable_player_ragdoll.configuration.impact_damage").comment("Damage from hard ragdoll impacts.").push("impact_damage");
+   }
+
+   public static final BooleanValue IMPACT_DAMAGE_ENABLED = BUILDER.translation("sable_player_ragdoll.configuration.impact_damage_enabled")
+      .comment("Damage ragdolled players when their ragdoll takes a hard impact.")
+      .define("impactDamageEnabled", true);
+   public static final DoubleValue IMPACT_DAMAGE_THRESHOLD = BUILDER.translation("sable_player_ragdoll.configuration.impact_damage_threshold")
+      .comment("Minimum speed lost in one tick before ragdoll impact damage is applied (m/s).")
+      .defineInRange("impactDamageThreshold", 12.0, 0.0, 128.0);
+   public static final DoubleValue IMPACT_DAMAGE_MULTIPLIER = BUILDER.translation("sable_player_ragdoll.configuration.impact_damage_multiplier")
+      .comment("Damage dealt per m/s of speed lost above the threshold.")
+      .defineInRange("impactDamageMultiplier", 0.75, 0.0, 20.0);
+   public static final DoubleValue IMPACT_DAMAGE_MAX = BUILDER.translation("sable_player_ragdoll.configuration.impact_damage_max")
+      .comment("Maximum damage dealt by one ragdoll impact.")
+      .defineInRange("impactDamageMax", 20.0, 0.0, 200.0);
+   public static final IntValue IMPACT_DAMAGE_COOLDOWN_TICKS = BUILDER.translation("sable_player_ragdoll.configuration.impact_damage_cooldown_ticks")
+      .comment("Minimum ticks between ragdoll impact damage events for the same ragdoll.")
+      .defineInRange("impactDamageCooldownTicks", 10, 0, 200);
+
+   static {
+      BUILDER.pop();
       BUILDER.translation("sable_player_ragdoll.configuration.despawn").comment("When player ragdolls expire.").push("despawn");
    }
 
@@ -141,6 +162,11 @@ public final class RagdollConfig {
       RagdollSettings.setAffectCreative((Boolean) AFFECT_CREATIVE.get());
       RagdollSettings.setMaxFlingSpeed((Double) MAX_FLING_SPEED.get());
       RagdollSettings.setRagdollMaxLaunchSpeed((Double) RAGDOLL_MAX_LAUNCH_SPEED.get());
+      RagdollSettings.setImpactDamageEnabled((Boolean) IMPACT_DAMAGE_ENABLED.get());
+      RagdollSettings.setImpactDamageThreshold((Double) IMPACT_DAMAGE_THRESHOLD.get());
+      RagdollSettings.setImpactDamageMultiplier((Double) IMPACT_DAMAGE_MULTIPLIER.get());
+      RagdollSettings.setImpactDamageMax((Double) IMPACT_DAMAGE_MAX.get());
+      RagdollSettings.setImpactDamageCooldownTicks((Integer) IMPACT_DAMAGE_COOLDOWN_TICKS.get());
       RagdollSettings.setAutoSeatOnTrigger((Boolean) AUTO_SEAT_ON_TRIGGER.get());
       RagdollSettings.setAllowManualTrigger((Boolean) ALLOW_MANUAL_TRIGGER.get());
       RagdollSettings.setMinDismountTicks((Integer) MIN_DISMOUNT_TICKS.get());
