@@ -107,6 +107,8 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
       boolean slim = this.model == this.slimModel;
       var playerRenderer = minecraft.getEntityRenderDispatcher().getSkinMap().get(slim ? PlayerSkin.Model.SLIM : PlayerSkin.Model.WIDE);
 
+      boolean accessoriesLoaded = ModList.get().isLoaded("accessories");
+
       if (playerRenderer instanceof LivingEntityRendererAccessor accessor) {
          boolean wasInvisible = entity.isInvisible();
          entity.setInvisible(false);
@@ -116,6 +118,10 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
          for (EquipmentSlot slot : EquipmentSlot.values()) {
             oldItems[slot.ordinal()] = entity.getItemBySlot(slot);
             ItemStack candidate = blockEntity.itemBySlot(slot);
+            if (accessoriesLoaded && slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
+               ItemStack cosmetic = AccessoriesRenderHelper.cosmeticArmorOverride(entity, slot);
+               if (cosmetic != null) candidate = cosmetic;
+            }
             ItemStack toShow = slotsForPart(bodyPart).contains(slot) && !isArmorSlotBlockedForPart(bodyPart, slot, candidate)
                ? candidate : ItemStack.EMPTY;
             entity.setItemSlot(slot, toShow);
@@ -124,9 +130,16 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
          try {
             for (var layer : accessor.getLayers()) {
                String layerClass = layer.getClass().getName();
-               // Curios handled separately; ElytraLayer handled explicitly below (cape-texture override).
+               // Curios/Accessories handled separately; ElytraLayer handled explicitly below.
                if (layerClass.equals("top.theillusivec4.curios.client.render.CuriosLayer")
+                     || layerClass.equals("io.wispforest.accessories.client.AccessoriesRenderLayer")
                      || layerClass.equals("net.minecraft.client.renderer.entity.layers.ElytraLayer")) {
+                  continue;
+               }
+               // YDM Weapon Master
+               if (bodyPart != BodyPart.TORSO
+                     && (layerClass.equals("com.minecraftserverzone.weaponmaster.itemlayers.HumanoidItemLayer")
+                        || layerClass.equals("com.minecraftserverzone.weaponmaster.itemlayers.HumanoidItemLayerLac"))) {
                   continue;
                }
                try {
@@ -150,9 +163,10 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
          this.elytraLayer.render(poseStack, buffer, packedLight, this.renderEntity, 0.0F, 0.0F, partialTick, 0.0F, 0.0F, 0.0F);
          this.renderCape(blockEntity, poseStack, buffer, packedLight);
       }
-
-      // Render Curios items filtered by body part using their slot identifiers.
-      if (ModList.get().isLoaded("curios")) {
+      
+      if (ModList.get().isLoaded("accessories")) {
+         AccessoriesRenderHelper.render(bodyPart, entity, this, poseStack, buffer, packedLight, partialTick);
+      } else if (ModList.get().isLoaded("curios")) {
          CuriosRenderHelper.render(bodyPart, entity, this, poseStack, buffer, packedLight, partialTick);
       }
    }

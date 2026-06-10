@@ -1,0 +1,136 @@
+package dev.leo.sableplayerragdoll.neoforge.client;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
+import dev.leo.sableplayerragdoll.entity.RagdollDollEntity;
+import io.wispforest.accessories.api.AccessoriesCapability;
+import io.wispforest.accessories.api.AccessoriesContainer;
+import io.wispforest.accessories.api.client.AccessoriesRendererRegistry;
+import io.wispforest.accessories.api.client.AccessoryRenderer;
+import io.wispforest.accessories.api.slot.SlotReference;
+import io.wispforest.accessories.api.slot.SlotTypeReference;
+import io.wispforest.accessories.menu.ArmorSlotTypes;
+import java.util.Map;
+import java.util.Set;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
+
+final class AccessoriesRenderHelper {
+
+    private static final Set<String> SPLIT_ARM_SLOTS = Set.of("hand", "ring");
+
+    private static final Map<String, Set<BodyPart>> SLOT_BODY_PARTS = Map.ofEntries(
+        Map.entry("hat",      Set.of(BodyPart.HEAD)),
+        Map.entry("face",     Set.of(BodyPart.HEAD)),
+        Map.entry("necklace", Set.of(BodyPart.TORSO)),
+        Map.entry("cape",     Set.of(BodyPart.TORSO)),
+        Map.entry("back",     Set.of(BodyPart.TORSO)),
+        Map.entry("belt",     Set.of(BodyPart.TORSO)),
+        Map.entry("charm",    Set.of(BodyPart.TORSO)),
+        Map.entry("shoes",    Set.of(BodyPart.LEFT_LEG, BodyPart.RIGHT_LEG)),
+        Map.entry("anklet",   Set.of(BodyPart.LEFT_LEG, BodyPart.RIGHT_LEG)),
+        Map.entry("wrist",    Set.of(BodyPart.LEFT_ARM, BodyPart.RIGHT_ARM))
+    );
+
+    private AccessoriesRenderHelper() {}
+
+    @Nullable
+    static ItemStack cosmeticArmorOverride(LivingEntity entity, EquipmentSlot slot) {
+        AccessoriesCapability cap = AccessoriesCapability.get(entity);
+        if (cap == null) return null;
+
+        SlotTypeReference reference = ArmorSlotTypes.getReferenceFromSlot(slot);
+        if (reference == null) return null;
+
+        AccessoriesContainer container = cap.getContainer(reference);
+        if (container == null) return null;
+
+        if (!container.shouldRender(0)) return ItemStack.EMPTY;
+
+        ItemStack cosmetic = container.getCosmeticAccessories().getItem(0);
+        return cosmetic.isEmpty() ? null : cosmetic;
+    }
+
+    private static boolean slotIndexBelongsToPart(String slotName, int index, BodyPart bodyPart) {
+        if (SPLIT_ARM_SLOTS.contains(slotName)) {
+            return bodyPart == ((index % 2 == 0) ? BodyPart.RIGHT_ARM : BodyPart.LEFT_ARM);
+        }
+        Set<BodyPart> parts = SLOT_BODY_PARTS.get(slotName);
+        return parts == null ? bodyPart == BodyPart.TORSO : parts.contains(bodyPart);
+    }
+
+    @Nullable
+    private static ModelPart oppositeLimb(BodyPart bodyPart, PlayerModel<?> model) {
+        return switch (bodyPart) {
+            case LEFT_LEG  -> model.rightLeg;
+            case RIGHT_LEG -> model.leftLeg;
+            case LEFT_ARM  -> model.rightArm;
+            case RIGHT_ARM -> model.leftArm;
+            default -> null;
+        };
+    }
+
+    static void render(
+        BodyPart bodyPart,
+        LivingEntity entity,
+        RenderLayerParent<RagdollDollEntity, PlayerModel<RagdollDollEntity>> parent,
+        PoseStack poseStack,
+        MultiBufferSource buffer,
+        int packedLight,
+        float partialTick
+    ) {
+        AccessoriesCapability cap = AccessoriesCapability.get(entity);
+        if (cap == null) return;
+
+        PlayerModel<RagdollDollEntity> model = parent.getModel();
+        ModelPart offLimb = oppositeLimb(bodyPart, model);
+
+        for (Map.Entry<String, ? extends AccessoriesContainer> entry : cap.getContainers().entrySet()) {
+            String slotName = entry.getKey();
+            // Armor containers are handled through the vanilla armor layers
+            // via the cosmetic equipment override.
+            if (ArmorSlotTypes.isArmorType(slotName)) continue;
+
+            AccessoriesContainer container = entry.getValue();
+
+            for (int i = 0; i < container.getSize(); i++) {
+                if (!slotIndexBelongsToPart(slotName, i, bodyPart)) continue;
+
+                ItemStack stack = container.getAccessories().getItem(i);
+                ItemStack cosmetic = container.getCosmeticAccessories().getItem(i);
+                if (!cosmetic.isEmpty()) stack = cosmetic;
+
+                if (stack.isEmpty()) continue;
+
+                AccessoryRenderer renderer = AccessoriesRendererRegistry.getRenderer(stack);
+                if (renderer.isEmpty() || !renderer.shouldRender(container.shouldRender(i))) continue;
+
+                float offLimbY = 0.0f;
+                if (offLimb != null) {
+                    offLimbY = offLimb.y;
+                    offLimb.y += 10000.0f;
+                }
+
+                SlotReference ref = container.createReference(i);
+                try {
+                    renderer.render(
+                        stack, ref, poseStack, model, buffer, packedLight,
+                        0.0f, 0.0f, partialTick, 0.0f, 0.0f, 0.0f
+                    );
+                } catch (Exception e) {
+                    // Swallow rendering errors for individual accessories.
+                } finally {
+                    if (offLimb != null) {
+                        offLimb.y = offLimbY;
+                    }
+                }
+            }
+        }
+    }
+}
