@@ -128,6 +128,7 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
          }
 
          // Displace all model parts that don't belong to this block
+         ModelPart currentPart = visiblePart(bodyPart);
          ModelPart[] allMainParts = {
             this.model.head, this.model.body,
             this.model.leftArm, this.model.rightArm,
