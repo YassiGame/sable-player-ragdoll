@@ -51,7 +51,7 @@ public final class RagdollAssemblyHelper {
    private static final double ARM_ROLL = 0.0;
    private static final double NECK_ANGULAR_STIFFNESS = 80.0;
    private static final double NECK_ANGULAR_DAMPING = 6.0;
-   private static final double LIMB_ANGULAR_STIFFNESS = 35.0;
+   private static final double LIMB_ANGULAR_STIFFNESS = 5.0;
    private static final double LIMB_ANGULAR_DAMPING = 4.5;
    private static final PartSpawn[] PARTS = new PartSpawn[]{
       new PartSpawn("head", BodyPart.HEAD, 0.0, 1.7125, 0.0, 0.0),
@@ -321,7 +321,6 @@ public final class RagdollAssemblyHelper {
       constraints += attachSideLimb(physicsSystem, torso, BodyPart.RIGHT_ARM, parts.get(BodyPart.RIGHT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, limbs.get(BodyPart.RIGHT_ARM), "right shoulder");
       constraints += attachSideLimb(physicsSystem, torso, BodyPart.LEFT_LEG, parts.get(BodyPart.LEFT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, limbs.get(BodyPart.LEFT_LEG), "left hip");
       constraints += attachSideLimb(physicsSystem, torso, BodyPart.RIGHT_LEG, parts.get(BodyPart.RIGHT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, limbs.get(BodyPart.RIGHT_LEG), "right hip");
-      suppressInternalContacts(physicsSystem, parts);
       return constraints;
    }
 
@@ -390,7 +389,6 @@ public final class RagdollAssemblyHelper {
             Set.of(ConstraintJointAxis.LINEAR_X, ConstraintJointAxis.LINEAR_Y, ConstraintJointAxis.LINEAR_Z)
          );
          PhysicsConstraintHandle handle = physicsSystem.getPipeline().addConstraint(first.subLevel(), second.subLevel(), config);
-         handle.setContactsEnabled(false);
          ACTIVE_CONSTRAINTS.add(handle);
 
          // Angular motors hold the joint at its rest angle: pitch -> X, yaw -> Y, roll -> Z (radians).
@@ -402,43 +400,6 @@ public final class RagdollAssemblyHelper {
       } catch (Throwable error) {
          SablePlayerRagdoll.LOGGER.warn("[sable_player_ragdoll] failed to attach ragdoll constraint {}: {}", name, error.toString());
          return 0;
-      }
-   }
-
-   private static void suppressInternalContacts(SubLevelPhysicsSystem physicsSystem, Map<BodyPart, SpawnedPart> parts) {
-      BodyPart[] limbs = new BodyPart[]{BodyPart.LEFT_ARM, BodyPart.RIGHT_ARM, BodyPart.LEFT_LEG, BodyPart.RIGHT_LEG};
-      SpawnedPart head = parts.get(BodyPart.HEAD);
-      for (BodyPart limb : limbs) {
-         suppressContacts(physicsSystem, head, parts.get(limb));
-      }
-
-      for (int firstIndex = 0; firstIndex < limbs.length; firstIndex++) {
-         for (int secondIndex = firstIndex + 1; secondIndex < limbs.length; secondIndex++) {
-            suppressContacts(physicsSystem, parts.get(limbs[firstIndex]), parts.get(limbs[secondIndex]));
-         }
-      }
-   }
-
-   private static void suppressContacts(SubLevelPhysicsSystem physicsSystem, SpawnedPart first, SpawnedPart second) {
-      if (first == null || second == null) {
-         return;
-      }
-
-      try {
-         GenericConstraintConfiguration config = new GenericConstraintConfiguration(
-            plotAnchor(first, 0.5, 0.5, 0.5),
-            plotAnchor(second, 0.5, 0.5, 0.5),
-            new Quaterniond(),
-            new Quaterniond(),
-            Set.of()
-         );
-         PhysicsConstraintHandle handle = physicsSystem.getPipeline().addConstraint(first.subLevel(), second.subLevel(), config);
-         if (handle != null) {
-            handle.setContactsEnabled(false);
-            ACTIVE_CONSTRAINTS.add(handle);
-         }
-      } catch (Throwable error) {
-         SablePlayerRagdoll.LOGGER.debug("[sable_player_ragdoll] failed to suppress ragdoll limb contact: {}", error.toString());
       }
    }
 

@@ -317,16 +317,17 @@ public final class RagdollSessionManager {
       Vec3 position = impact.position();
       spawnImpactParticles(level, position, delta, feedbackThreshold);
       double damageThreshold = RagdollSettings.impactDamageThreshold();
-      net.minecraft.sounds.SoundEvent soundEvent = delta > damageThreshold
+      boolean damageImpact = delta > damageThreshold;
+      net.minecraft.sounds.SoundEvent soundEvent = damageImpact
          ? RagdollSoundEvents.ragdollImpact()
          : RagdollSoundEvents.ragdollSmallImpact();
       if (soundEvent != null) {
-         float volume = impactSoundVolume(delta, feedbackThreshold);
+         float volume = damageImpact ? 0.25F : 1.7F;
          float pitch = 0.9F + level.random.nextFloat() * 0.2F;
          level.playSound(null, position.x, position.y, position.z, soundEvent, SoundSource.PLAYERS, volume, pitch);
       }
 
-      if (delta > damageThreshold) {
+      if (damageImpact) {
          float damage = (float) Math.min(RagdollSettings.impactDamageMax(), (delta - damageThreshold) * RagdollSettings.impactDamageMultiplier());
          if (damage > 0.0F) {
             player.hurt(player.damageSources().flyIntoWall(), damage);
@@ -341,12 +342,6 @@ public final class RagdollSessionManager {
       double spread = 0.36 + strength * 0.24;
       double speed = 0.06;
       level.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, position.x, position.y, position.z, count, spread, spread * 0.5, spread, speed);
-   }
-
-   private static float impactSoundVolume(double delta, double threshold) {
-      double maxDelta = threshold + RagdollSettings.impactDamageMax() / Math.max(0.001, RagdollSettings.impactDamageMultiplier());
-      double strength = (delta - threshold) / Math.max(0.001, maxDelta - threshold);
-      return (float) Math.clamp(0.25 + strength * 0.85, 0.25, 1.1);
    }
 
    private static ImpactSample sampleLargestLinkedVelocityDelta(ServerLevel level, SubLevelPhysicsSystem physicsSystem, ServerSubLevelContainer serverContainer, ServerSubLevel headSubLevel) {

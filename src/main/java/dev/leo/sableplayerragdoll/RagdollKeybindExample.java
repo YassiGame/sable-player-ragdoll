@@ -33,17 +33,17 @@ public final class RagdollKeybindExample {
 
    private static RagdollLimbOptions onFootPose() {
       return RagdollLimbOptions.builder()
-         .limb(BodyPart.LEFT_ARM, RagdollLimbConfig.builder().roll(20).stiffness(25))
-         .limb(BodyPart.RIGHT_ARM, RagdollLimbConfig.builder().roll(-20).stiffness(25))
-         .limb(BodyPart.RIGHT_LEG, RagdollLimbConfig.builder().roll(-20).stiffness(25))
-         .limb(BodyPart.LEFT_LEG, RagdollLimbConfig.builder().roll(20).stiffness(25))
+         .limb(BodyPart.LEFT_ARM, RagdollLimbConfig.builder().roll(20).stiffness(5))
+         .limb(BodyPart.RIGHT_ARM, RagdollLimbConfig.builder().roll(-20).stiffness(5))
+         .limb(BodyPart.RIGHT_LEG, RagdollLimbConfig.builder().roll(-20).stiffness(5))
+         .limb(BodyPart.LEFT_LEG, RagdollLimbConfig.builder().roll(20).stiffness(5))
          .build();
    }
 
    private static RagdollLimbOptions elytraPose() {
       return RagdollLimbOptions.builder()
-         .limb(BodyPart.LEFT_ARM, RagdollLimbConfig.builder().stiffness(15).damping(8))
-         .limb(BodyPart.RIGHT_ARM, RagdollLimbConfig.builder().stiffness(15).damping(8))
+         .limb(BodyPart.LEFT_ARM, RagdollLimbConfig.builder().stiffness(5).damping(8))
+         .limb(BodyPart.RIGHT_ARM, RagdollLimbConfig.builder().stiffness(5).damping(8))
          .build();
    }
 }

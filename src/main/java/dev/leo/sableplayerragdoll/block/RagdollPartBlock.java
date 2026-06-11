@@ -21,10 +21,15 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class RagdollPartBlock extends Block implements EntityBlock, BlockSubLevelCollisionShape {
    public static final EnumProperty<BodyPart> BODY_PART = EnumProperty.create("body_part", BodyPart.class);
-   private static final VoxelShape HEAD_SHAPE = Block.box(4.0, 4.0, 4.0, 12.0, 12.0, 12.0);
-   private static final VoxelShape TORSO_SHAPE = Block.box(4.0, 2.0, 6.0, 12.0, 14.0, 10.0);
-   private static final VoxelShape ARM_SHAPE = Block.box(5.0, 2.0, 6.0, 9.0, 14.0, 10.0);
-   private static final VoxelShape LEG_SHAPE = Block.box(5.0, 2.0, 6.0, 9.0, 14.0, 10.0);
+   private static final VoxelShape HEAD_OUTLINE_SHAPE = Block.box(4.0, 4.0, 4.0, 12.0, 12.0, 12.0);
+   private static final VoxelShape TORSO_OUTLINE_SHAPE = Block.box(4.0, 2.0, 6.0, 12.0, 14.0, 10.0);
+   private static final VoxelShape ARM_OUTLINE_SHAPE = Block.box(5.0, 2.0, 6.0, 9.0, 14.0, 10.0);
+   private static final VoxelShape LEG_OUTLINE_SHAPE = Block.box(5.0, 2.0, 6.0, 9.0, 14.0, 10.0);
+
+   private static final VoxelShape HEAD_COLLISION_SHAPE = Block.box(4.0, 6.0, 4.0, 12.0, 10.0, 12.0);
+   private static final VoxelShape TORSO_COLLISION_SHAPE = Block.box(5.0, 3.0, 6.0, 11.0, 12.0, 10.0);
+   private static final VoxelShape ARM_COLLISION_SHAPE = Block.box(6.0, 3.0, 6.0, 8.0, 13.0, 10.0);
+   private static final VoxelShape LEG_COLLISION_SHAPE = Block.box(6.0, 3.0, 6.0, 8.0, 13.0, 10.0);
 
    public RagdollPartBlock(Properties properties) {
       super(properties);
@@ -44,12 +49,12 @@ public final class RagdollPartBlock extends Block implements EntityBlock, BlockS
 
    @Override
    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-      return partShape(state);
+      return outlineShape(state);
    }
 
    @Override
    protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-      return partShape(state);
+      return collisionShape(state);
    }
 
    @Override
@@ -64,7 +69,7 @@ public final class RagdollPartBlock extends Block implements EntityBlock, BlockS
 
    @Override
    public VoxelShape getSubLevelCollisionShape(BlockGetter level, BlockState state) {
-      return partShape(state);
+      return collisionShape(state);
    }
 
    @Override
@@ -77,12 +82,21 @@ public final class RagdollPartBlock extends Block implements EntityBlock, BlockS
       return false;
    }
 
-   private static VoxelShape partShape(BlockState state) {
+   private static VoxelShape outlineShape(BlockState state) {
       return switch (state.getValue(BODY_PART)) {
-         case HEAD -> HEAD_SHAPE;
-         case LEFT_ARM, RIGHT_ARM -> ARM_SHAPE;
-         case LEFT_LEG, RIGHT_LEG -> LEG_SHAPE;
-         case TORSO -> TORSO_SHAPE;
+         case HEAD -> HEAD_OUTLINE_SHAPE;
+         case LEFT_ARM, RIGHT_ARM -> ARM_OUTLINE_SHAPE;
+         case LEFT_LEG, RIGHT_LEG -> LEG_OUTLINE_SHAPE;
+         case TORSO -> TORSO_OUTLINE_SHAPE;
+      };
+   }
+
+   private static VoxelShape collisionShape(BlockState state) {
+      return switch (state.getValue(BODY_PART)) {
+         case HEAD -> HEAD_COLLISION_SHAPE;
+         case LEFT_ARM, RIGHT_ARM -> ARM_COLLISION_SHAPE;
+         case LEFT_LEG, RIGHT_LEG -> LEG_COLLISION_SHAPE;
+         case TORSO -> TORSO_COLLISION_SHAPE;
       };
    }
 }
