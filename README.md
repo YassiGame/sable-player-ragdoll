@@ -43,6 +43,9 @@ Useful test commands:
 /sable_player_ragdoll dummy <pos> <heading>
 /sable_player_ragdoll dummy profile <profile>
 /sable_player_ragdoll dummy profile <profile> <pos> <heading>
+/sable_player_ragdoll wailing start
+/sable_player_ragdoll wailing start <duration_ticks> <stiffness> <interval_ticks> [targets]
+/sable_player_ragdoll wailing stop [targets]
 /sable_player_ragdoll test_stick
 ```
 
@@ -168,6 +171,33 @@ RagdollAPI.spawnPlayerless(level, position, headingDegrees, profile, velocity,
    despawnRule, limbs);
 ```
 
+### Wailing motor effects
+
+Active sessions can temporarily retarget their joint motors for a twitching or
+wailing motion. This works for both player ragdolls and playerless ragdolls.
+
+```java
+RagdollSession session = RagdollAPI.launch(player, velocity);
+if (session != null) {
+   session.applyWailing(RagdollWailingOptions.builder()
+      .durationTicks(100)
+      .stiffness(15.0)
+      .intervalTicks(10)
+      .startDelayTicks(2)
+      .build());
+}
+```
+
+Use `session.stopWailing()` to restore the ragdoll joints to their base motor
+targets before the duration ends. By default, wailing waits 2 ticks before the
+first retarget so the ragdoll can finish spawning cleanly. Convenience overloads
+are also available:
+
+```java
+session.applyWailing(100);
+session.applyWailing(15.0, 100, 10);
+```
+
 `RagdollKeybindExample` in the source is a worked end-to-end example showing an
 on-foot pose and an elytra pose built with this API.
 
@@ -196,10 +226,10 @@ the exit velocity inherited from the ragdoll, and a reason.
 `isRagdollSubLevel` lets other mods check whether a given sub-level (or its UUID)
 belongs to a ragdoll.
 
-The API covers spawning, despawning, per-limb pose/joint control, session
-locking, basic session queries, and sub-level identification. It does not
-currently expose direct force application to an already active ragdoll or
-per-body-part inventory injection.
+The API covers spawning, despawning, per-limb pose/joint control, temporary
+wailing effects, session locking, basic session queries, and sub-level
+identification. It does not currently expose direct force application to an
+already active ragdoll or per-body-part inventory injection.
 
 ## License
 

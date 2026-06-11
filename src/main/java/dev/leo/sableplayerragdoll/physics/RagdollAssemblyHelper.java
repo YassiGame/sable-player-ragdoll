@@ -63,6 +63,7 @@ public final class RagdollAssemblyHelper {
    };
    private static final Map<BodyPart, PartSpawn> PART_BY_BODY = buildPartIndex();
    private static final List<PhysicsConstraintHandle> ACTIVE_CONSTRAINTS = new ArrayList<>();
+   private static final Map<UUID, Map<BodyPart, RagdollJoint>> JOINTS_BY_HEAD = new ConcurrentHashMap<>();
    private static final Map<UUID, List<UUID>> DOLL_PARTS_BY_HEAD = new ConcurrentHashMap<>();
    private static final Map<UUID, BodyPart> BODY_PART_BY_SUBLEVEL = new ConcurrentHashMap<>();
    private static final Map<UUID, UUID> HEAD_BY_PART = new ConcurrentHashMap<>();
@@ -190,6 +191,8 @@ public final class RagdollAssemblyHelper {
       List<UUID> linkedParts = partIds == null ? List.of(headId) : partIds;
       linkedParts.forEach(BODY_PART_BY_SUBLEVEL::remove);
       linkedParts.forEach(HEAD_BY_PART::remove);
+      JOINTS_BY_HEAD.remove(headId);
+      RagdollMotorEffects.clear(headId);
       return linkedParts;
    }
 
@@ -221,6 +224,11 @@ public final class RagdollAssemblyHelper {
       return headId != null && ELYTRA_HEADS.contains(headId);
    }
 
+   public static Map<BodyPart, RagdollJoint> joints(UUID headId) {
+      Map<BodyPart, RagdollJoint> joints = JOINTS_BY_HEAD.get(headId);
+      return joints == null ? Map.of() : Map.copyOf(joints);
+   }
+
    public static @Nullable PhysicsConstraintHandle restoreConstraints(ServerLevel level, Map<BodyPart, ServerSubLevel> subLevels, RagdollLimbOptions limbs) {
       Map<BodyPart, SpawnedPart> parts = new EnumMap<>(BodyPart.class);
       for (PartSpawn part : PARTS) {
@@ -235,9 +243,9 @@ public final class RagdollAssemblyHelper {
          return null;
       }
 
-      int prevSize = ACTIVE_CONSTRAINTS.size();
       attachSpawnedParts(level, parts, false, limbs);
-      PhysicsConstraintHandle representative = ACTIVE_CONSTRAINTS.size() > prevSize ? ACTIVE_CONSTRAINTS.get(prevSize) : null;
+      Map<BodyPart, RagdollJoint> joints = JOINTS_BY_HEAD.get(head.getUniqueId());
+      PhysicsConstraintHandle representative = joints == null || joints.isEmpty() ? null : joints.values().iterator().next().handle();
 
       List<ServerSubLevel> restoredSubLevels = parts.values().stream().map(SpawnedPart::subLevel).toList();
       UUID headId = head.getUniqueId();
@@ -305,8 +313,11 @@ public final class RagdollAssemblyHelper {
       }
 
       RagdollLimbConfig head = limbs.get(BodyPart.HEAD);
+      UUID headId = parts.get(BodyPart.HEAD) == null ? null : parts.get(BodyPart.HEAD).subLevel().getUniqueId();
       int constraints = 0;
       constraints += attach(
+         headId,
+         BodyPart.HEAD,
          physicsSystem,
          torso,
          parts.get(BodyPart.HEAD),
@@ -317,14 +328,15 @@ public final class RagdollAssemblyHelper {
          limbRotationRadians(BodyPart.HEAD, head),
          "neck"
       );
-      constraints += attachSideLimb(physicsSystem, torso, BodyPart.LEFT_ARM, parts.get(BodyPart.LEFT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, limbs.get(BodyPart.LEFT_ARM), "left shoulder");
-      constraints += attachSideLimb(physicsSystem, torso, BodyPart.RIGHT_ARM, parts.get(BodyPart.RIGHT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, limbs.get(BodyPart.RIGHT_ARM), "right shoulder");
-      constraints += attachSideLimb(physicsSystem, torso, BodyPart.LEFT_LEG, parts.get(BodyPart.LEFT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, limbs.get(BodyPart.LEFT_LEG), "left hip");
-      constraints += attachSideLimb(physicsSystem, torso, BodyPart.RIGHT_LEG, parts.get(BodyPart.RIGHT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, limbs.get(BodyPart.RIGHT_LEG), "right hip");
+      constraints += attachSideLimb(headId, physicsSystem, torso, BodyPart.LEFT_ARM, parts.get(BodyPart.LEFT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, limbs.get(BodyPart.LEFT_ARM), "left shoulder");
+      constraints += attachSideLimb(headId, physicsSystem, torso, BodyPart.RIGHT_ARM, parts.get(BodyPart.RIGHT_ARM), SHOULDER_Y, ARM_SHOULDER_Y, true, limbs.get(BodyPart.RIGHT_ARM), "right shoulder");
+      constraints += attachSideLimb(headId, physicsSystem, torso, BodyPart.LEFT_LEG, parts.get(BodyPart.LEFT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, limbs.get(BodyPart.LEFT_LEG), "left hip");
+      constraints += attachSideLimb(headId, physicsSystem, torso, BodyPart.RIGHT_LEG, parts.get(BodyPart.RIGHT_LEG), HIP_TORSO_Y, HIP_LEG_Y, false, limbs.get(BodyPart.RIGHT_LEG), "right hip");
       return constraints;
    }
 
    private static int attachSideLimb(
+      @Nullable UUID headId,
       SubLevelPhysicsSystem physicsSystem,
       SpawnedPart torso,
       BodyPart bodyPart,
@@ -345,6 +357,8 @@ public final class RagdollAssemblyHelper {
       double torsoX = 0.5 + sideOffset * torsoScale;
       double limbX = 0.44 - sideOffset * limbScale;
       return attach(
+         headId,
+         bodyPart,
          physicsSystem,
          torso,
          limb,
@@ -366,6 +380,8 @@ public final class RagdollAssemblyHelper {
    }
 
    private static int attach(
+      @Nullable UUID headId,
+      BodyPart bodyPart,
       SubLevelPhysicsSystem physicsSystem,
       SpawnedPart first,
       SpawnedPart second,
@@ -390,6 +406,10 @@ public final class RagdollAssemblyHelper {
          );
          PhysicsConstraintHandle handle = physicsSystem.getPipeline().addConstraint(first.subLevel(), second.subLevel(), config);
          ACTIVE_CONSTRAINTS.add(handle);
+         if (headId != null) {
+            JOINTS_BY_HEAD.computeIfAbsent(headId, unused -> new EnumMap<>(BodyPart.class))
+               .put(bodyPart, new RagdollJoint(handle, new Vector3d(angularTarget), angularStiffness, angularDamping));
+         }
 
          // Angular motors hold the joint at its rest angle: pitch -> X, yaw -> Y, roll -> Z (radians).
          handle.setMotor(ConstraintJointAxis.ANGULAR_X, angularTarget.x(), angularStiffness, angularDamping, false, 0.0);
@@ -499,6 +519,9 @@ public final class RagdollAssemblyHelper {
    }
 
    public record Doll(ServerSubLevel headSubLevel, List<ServerSubLevel> allSubLevels, Map<BodyPart, UUID> partSubLevelIds, int constraints) {
+   }
+
+   public record RagdollJoint(PhysicsConstraintHandle handle, Vector3dc baseTarget, double baseStiffness, double baseDamping) {
    }
 
    public record PartSpawn(String name, BodyPart bodyPart, double rightOffset, double upOffset, double yawOffset, double rollOffset) {

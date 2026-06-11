@@ -76,6 +76,7 @@ public final class RagdollSessionManager {
       DISMOUNT_LOCKED.remove(subLevel.getUniqueId());
       LAST_VELOCITIES.remove(subLevel.getUniqueId());
       NEXT_IMPACT_DAMAGE_TICKS.remove(subLevel.getUniqueId());
+      RagdollMotorEffects.clear(subLevel.getUniqueId());
    }
 
    public static void setCustomDespawnConditions(ServerSubLevel subLevel, List<DespawnCondition> conditions) {
@@ -148,6 +149,7 @@ public final class RagdollSessionManager {
                      } else if (shouldExpire(level, physicsSystem, serverSubLevel)) {
                         RagdollExpireHelper.expire(physicsSystem, level, serverSubLevel, reasonFor(serverSubLevel, level, physicsSystem));
                      } else {
+                        RagdollMotorEffects.tick(level, serverSubLevel);
                         applyImpactDamage(level, physicsSystem, serverContainer, serverSubLevel);
                      }
                   }
@@ -404,6 +406,18 @@ public final class RagdollSessionManager {
       @Override
       public void setDismountLocked(boolean locked) {
          RagdollSessionManager.setDismountLocked(subLevel, locked);
+      }
+
+      @Override
+      public void applyWailing(dev.leo.sableplayerragdoll.api.RagdollWailingOptions options) {
+         dev.leo.sableplayerragdoll.api.RagdollWailingOptions resolved =
+            options == null ? dev.leo.sableplayerragdoll.api.RagdollWailingOptions.defaults() : options;
+         RagdollMotorEffects.applyWailing(player.serverLevel(), subLevel, resolved.stiffness(), resolved.durationTicks(), resolved.intervalTicks(), resolved.startDelayTicks());
+      }
+
+      @Override
+      public void stopWailing() {
+         RagdollMotorEffects.stopWailing(subLevel);
       }
 
       @Override

@@ -5,6 +5,7 @@ import dev.leo.sableplayerragdoll.api.RagdollLaunchOptions;
 import dev.leo.sableplayerragdoll.api.RagdollLimbConfig;
 import dev.leo.sableplayerragdoll.api.RagdollLimbOptions;
 import dev.leo.sableplayerragdoll.api.RagdollSession;
+import dev.leo.sableplayerragdoll.api.RagdollWailingOptions;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
@@ -14,6 +15,8 @@ public final class RagdollKeybindExample {
 
    private static final double TICKS_TO_METRES_PER_SECOND = 20.0;
    private static final double UPWARD_KICK = 5.0;
+   private static final int ELYTRA_WAILING_DURATION_TICKS = 3 * 20;
+   private static final double ELYTRA_WAILING_STIFFNESS = 60.0;
 
    private RagdollKeybindExample() {
    }
@@ -22,7 +25,14 @@ public final class RagdollKeybindExample {
    public static RagdollSession launch(ServerPlayer player) {
       if (player.isFallFlying()) {
          Vec3 velocity = player.getDeltaMovement().scale(TICKS_TO_METRES_PER_SECOND);
-         return RagdollAPI.launch(player, velocity, RagdollLaunchOptions.builder().limbs(elytraPose()).build());
+         RagdollSession session = RagdollAPI.launch(player, velocity, RagdollLaunchOptions.builder().limbs(elytraPose()).build());
+         if (session != null) {
+            session.applyWailing(RagdollWailingOptions.builder()
+               .durationTicks(ELYTRA_WAILING_DURATION_TICKS)
+               .stiffness(ELYTRA_WAILING_STIFFNESS)
+               .build());
+         }
+         return session;
       }
 
       Vec3 horizontal = player.getKnownMovement().scale(TICKS_TO_METRES_PER_SECOND);

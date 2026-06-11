@@ -175,7 +175,7 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
 
       if (bodyPart == BodyPart.TORSO && this.renderEntity != null) {
          this.elytraLayer.render(poseStack, buffer, packedLight, this.renderEntity, 0.0F, 0.0F, partialTick, 0.0F, 0.0F, 0.0F);
-         this.renderCape(blockEntity, poseStack, buffer, packedLight);
+         this.renderCape(blockEntity, entity, poseStack, buffer, packedLight);
       }
       
       if (ModList.get().isLoaded("accessories")) {
@@ -295,9 +295,10 @@ public final class RagdollPartBlockEntityRenderer implements BlockEntityRenderer
       return !(item.getItem() instanceof net.minecraft.world.item.ArmorItem);
    }
 
-   private void renderCape(RagdollPartBlockEntity blockEntity, PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+   private void renderCape(RagdollPartBlockEntity blockEntity, LivingEntity entity, PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
       if (this.currentCapeTexture == null) return;
       if (blockEntity.itemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA)) return;
+      if (entity instanceof net.minecraft.client.player.AbstractClientPlayer acp && !acp.isModelPartShown(net.minecraft.world.entity.player.PlayerModelPart.CAPE)) return;
       ModelPart cloak = this.model == this.slimModel ? this.slimCloak : this.defaultCloak;
       cloak.visible = true;
       poseStack.pushPose();

@@ -14,6 +14,7 @@ import dev.leo.sableplayerragdoll.api.PlayerlessDespawnRule;
 import dev.leo.sableplayerragdoll.SablePlayerRagdollBootstrap;
 import dev.leo.sableplayerragdoll.api.PlayerlessRagdollSession;
 import dev.leo.sableplayerragdoll.api.RagdollAPI;
+import dev.leo.sableplayerragdoll.api.RagdollWailingOptions;
 import dev.leo.sableplayerragdoll.block.RagdollBlocks;
 import dev.leo.sableplayerragdoll.block.RagdollPartBlock;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntities;
@@ -35,6 +36,7 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.core.component.DataComponents;
@@ -75,6 +77,7 @@ import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.neoforged.neoforge.event.tick.LevelTickEvent.Post;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 
@@ -318,9 +321,128 @@ public final class SablePlayerRagdollNeoForge {
                   )
                )
             )
+            .then(Commands.literal("wailing")
+               .then(Commands.literal("start")
+                  .executes(context -> startWailing(context.getSource().getPlayerOrException(), 100, 15.0, 10))
+                  .then(Commands.argument("duration_ticks", IntegerArgumentType.integer(1))
+                     .executes(context -> startWailing(
+                        context.getSource().getPlayerOrException(),
+                        IntegerArgumentType.getInteger(context, "duration_ticks"),
+                        15.0,
+                        10
+                     ))
+                     .then(Commands.argument("stiffness", DoubleArgumentType.doubleArg(0.0))
+                        .executes(context -> startWailing(
+                           context.getSource().getPlayerOrException(),
+                           IntegerArgumentType.getInteger(context, "duration_ticks"),
+                           DoubleArgumentType.getDouble(context, "stiffness"),
+                           10
+                        ))
+                        .then(Commands.argument("interval_ticks", IntegerArgumentType.integer(1))
+                           .executes(context -> startWailing(
+                              context.getSource().getPlayerOrException(),
+                              IntegerArgumentType.getInteger(context, "duration_ticks"),
+                              DoubleArgumentType.getDouble(context, "stiffness"),
+                              IntegerArgumentType.getInteger(context, "interval_ticks")
+                           ))
+                           .then(Commands.argument("targets", EntityArgument.players())
+                              .executes(context -> startWailing(
+                                 context.getSource(),
+                                 EntityArgument.getPlayers(context, "targets"),
+                                 IntegerArgumentType.getInteger(context, "duration_ticks"),
+                                 DoubleArgumentType.getDouble(context, "stiffness"),
+                                 IntegerArgumentType.getInteger(context, "interval_ticks")
+                              ))
+                           )
+                        )
+                     )
+                  )
+               )
+               .then(Commands.literal("stop")
+                  .executes(context -> stopWailing(context.getSource().getPlayerOrException()))
+                  .then(Commands.argument("targets", EntityArgument.players())
+                     .executes(context -> stopWailing(context.getSource(), EntityArgument.getPlayers(context, "targets"))))
+               )
+            )
             .then(Commands.literal("test_stick")
                .executes(context -> giveRagdollTestStick(context.getSource())))
       );
+   }
+
+   private static int startWailing(ServerPlayer player, int durationTicks, double stiffness, int intervalTicks) {
+      return startWailing(
+         player.createCommandSourceStack(),
+         List.of(player),
+         RagdollWailingOptions.builder()
+            .durationTicks(durationTicks)
+            .stiffness(stiffness)
+            .intervalTicks(intervalTicks)
+            .build()
+      );
+   }
+
+   private static int startWailing(
+      CommandSourceStack source,
+      Collection<ServerPlayer> players,
+      int durationTicks,
+      double stiffness,
+      int intervalTicks
+   ) {
+      return startWailing(
+         source,
+         players,
+         RagdollWailingOptions.builder()
+            .durationTicks(durationTicks)
+            .stiffness(stiffness)
+            .intervalTicks(intervalTicks)
+            .build()
+      );
+   }
+
+   private static int startWailing(CommandSourceStack source, Collection<ServerPlayer> players, RagdollWailingOptions options) {
+      int applied = 0;
+      for (ServerPlayer player : players) {
+         var session = RagdollAPI.activeSession(player);
+         if (session == null) {
+            continue;
+         }
+
+         session.applyWailing(options);
+         applied++;
+      }
+
+      int result = applied;
+      if (result == 0) {
+         source.sendFailure(Component.literal("No target players are currently ragdolled."));
+      } else {
+         source.sendSuccess(() -> Component.literal("Started wailing on " + result + " ragdoll(s)."), true);
+      }
+      return result;
+   }
+
+   private static int stopWailing(ServerPlayer player) {
+      return stopWailing(player.createCommandSourceStack(), List.of(player));
+   }
+
+   private static int stopWailing(CommandSourceStack source, Collection<ServerPlayer> players) {
+      int stopped = 0;
+      for (ServerPlayer player : players) {
+         var session = RagdollAPI.activeSession(player);
+         if (session == null) {
+            continue;
+         }
+
+         session.stopWailing();
+         stopped++;
+      }
+
+      int result = stopped;
+      if (result == 0) {
+         source.sendFailure(Component.literal("No target players are currently ragdolled."));
+      } else {
+         source.sendSuccess(() -> Component.literal("Stopped wailing on " + result + " ragdoll(s)."), true);
+      }
+      return result;
    }
 
    private static int spawnDummyRagdoll(CommandSourceStack source, Vec3 position, double headingDegrees) {

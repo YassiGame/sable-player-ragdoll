@@ -18,6 +18,23 @@ public interface RagdollSession {
    // Lock or unlock manual dismount for this session. Overrides the global minDismountTicks while set.
    void setDismountLocked(boolean locked);
 
+   // Randomly retargets joint motors for a twitching/wailing motion.
+   void applyWailing(RagdollWailingOptions options);
+
+   default void applyWailing(double stiffness, int durationTicks, int intervalTicks) {
+      applyWailing(RagdollWailingOptions.builder()
+         .stiffness(stiffness)
+         .durationTicks(durationTicks)
+         .intervalTicks(intervalTicks)
+         .build());
+   }
+
+   default void applyWailing(int durationTicks) {
+      applyWailing(RagdollWailingOptions.builder().durationTicks(durationTicks).build());
+   }
+
+   void stopWailing();
+
    // Triggers an immediate clean release. No-op if the session is already ending.
    void release();
 }

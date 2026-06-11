@@ -3,6 +3,7 @@ package dev.leo.sableplayerragdoll.api;
 import com.mojang.authlib.GameProfile;
 import dev.leo.sableplayerragdoll.physics.RagdollAssemblyHelper;
 import dev.leo.sableplayerragdoll.physics.RagdollExpireHelper;
+import dev.leo.sableplayerragdoll.physics.RagdollMotorEffects;
 import dev.leo.sableplayerragdoll.physics.RagdollRegistry;
 import dev.leo.sableplayerragdoll.physics.RagdollSessionManager;
 import dev.ryanhcode.sable.sublevel.SubLevel;
@@ -154,6 +155,17 @@ public final class RagdollAPI {
       }
 
       @Override
+      public void applyWailing(RagdollWailingOptions options) {
+         RagdollWailingOptions resolved = options == null ? RagdollWailingOptions.defaults() : options;
+         RagdollMotorEffects.applyWailing(player.serverLevel(), subLevel, resolved.stiffness(), resolved.durationTicks(), resolved.intervalTicks(), resolved.startDelayTicks());
+      }
+
+      @Override
+      public void stopWailing() {
+         RagdollMotorEffects.stopWailing(subLevel);
+      }
+
+      @Override
       public void release() {
          ServerLevel level = player.serverLevel();
          SubLevelPhysicsSystem physicsSystem = SubLevelPhysicsSystem.get(level);
@@ -183,6 +195,17 @@ public final class RagdollAPI {
       @Override
       public long elapsedTicks() {
          return level.getGameTime() - startGameTime;
+      }
+
+      @Override
+      public void applyWailing(RagdollWailingOptions options) {
+         RagdollWailingOptions resolved = options == null ? RagdollWailingOptions.defaults() : options;
+         RagdollMotorEffects.applyWailing(level, subLevel, resolved.stiffness(), resolved.durationTicks(), resolved.intervalTicks(), resolved.startDelayTicks());
+      }
+
+      @Override
+      public void stopWailing() {
+         RagdollMotorEffects.stopWailing(subLevel);
       }
 
       @Override
