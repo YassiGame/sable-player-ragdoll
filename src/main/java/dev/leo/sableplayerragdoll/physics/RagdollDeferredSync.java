@@ -132,11 +132,22 @@ public final class RagdollDeferredSync {
       if (container instanceof ServerSubLevelContainer serverContainer) {
          return launchLinkedParts(physicsSystem, serverContainer, rootSubLevel, launch);
       }
-      physicsSystem.getPipeline().addLinearAndAngularVelocity(rootSubLevel, launch.linearVelocity(), launch.angularVelocity());
+      applyLaunchVelocity(physicsSystem, rootSubLevel, launch, 1.0);
       return 1;
+   }
+   private static final double LIMB_TRAIL_SCALE = 0.90;
+   private static final double LAUNCH_STRENGTH = 0.4;
+
+   private static void applyLaunchVelocity(SubLevelPhysicsSystem physicsSystem, ServerSubLevel subLevel, PendingLaunch launch, double scale) {
+      org.joml.Vector3d currentLinear = physicsSystem.getPipeline().getLinearVelocity(subLevel, new org.joml.Vector3d());
+      org.joml.Vector3d currentAngular = physicsSystem.getPipeline().getAngularVelocity(subLevel, new org.joml.Vector3d());
+      org.joml.Vector3d deltaLinear = new org.joml.Vector3d(launch.linearVelocity()).mul(scale).sub(currentLinear);
+      org.joml.Vector3d deltaAngular = new org.joml.Vector3d(launch.angularVelocity()).sub(currentAngular);
+      physicsSystem.getPipeline().addLinearAndAngularVelocity(subLevel, deltaLinear, deltaAngular);
    }
 
    private static int launchLinkedParts(SubLevelPhysicsSystem physicsSystem, ServerSubLevelContainer serverContainer, ServerSubLevel rootSubLevel, PendingLaunch launch) {
+      UUID torsoId = RagdollAssemblyHelper.linkedTorso(rootSubLevel.getUniqueId());
       if (launch.launchAllLinkedParts()) {
          int launched = 0;
          for (UUID partId : RagdollAssemblyHelper.linkedParts(rootSubLevel.getUniqueId())) {
@@ -144,21 +155,21 @@ public final class RagdollDeferredSync {
                RagdollRegistry.wakePhysicsBody(physicsSystem, partSubLevel);
                physicsSystem.getPipeline().onStatsChanged(partSubLevel);
                RagdollRegistry.wakePhysicsBody(physicsSystem, partSubLevel);
-               physicsSystem.getPipeline().addLinearAndAngularVelocity(partSubLevel, launch.linearVelocity(), launch.angularVelocity());
+               double scale = LAUNCH_STRENGTH * (partId.equals(torsoId) ? 1.0 : LIMB_TRAIL_SCALE);
+               applyLaunchVelocity(physicsSystem, partSubLevel, launch, scale);
                launched++;
             }
          }
          if (launched > 0) return launched;
       }
-      UUID torsoId = RagdollAssemblyHelper.linkedTorso(rootSubLevel.getUniqueId());
       if (torsoId != null && serverContainer.getSubLevel(torsoId) instanceof ServerSubLevel torsoSubLevel && !torsoSubLevel.isRemoved()) {
          RagdollRegistry.wakePhysicsBody(physicsSystem, torsoSubLevel);
          physicsSystem.getPipeline().onStatsChanged(torsoSubLevel);
          RagdollRegistry.wakePhysicsBody(physicsSystem, torsoSubLevel);
-         physicsSystem.getPipeline().addLinearAndAngularVelocity(torsoSubLevel, launch.linearVelocity(), launch.angularVelocity());
+         applyLaunchVelocity(physicsSystem, torsoSubLevel, launch, LAUNCH_STRENGTH);
          return 1;
       }
-      physicsSystem.getPipeline().addLinearAndAngularVelocity(rootSubLevel, launch.linearVelocity(), launch.angularVelocity());
+      applyLaunchVelocity(physicsSystem, rootSubLevel, launch, LAUNCH_STRENGTH);
       return 1;
    }
 

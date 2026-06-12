@@ -85,6 +85,10 @@ public final class RagdollMotorEffects {
       Map<BodyPart, RagdollAssemblyHelper.RagdollJoint> joints = RagdollAssemblyHelper.joints(headSubLevel.getUniqueId());
       double stiffness = wailing.getDouble(STIFFNESS_KEY);
       for (Map.Entry<BodyPart, RagdollAssemblyHelper.RagdollJoint> entry : joints.entrySet()) {
+         if (entry.getKey() == BodyPart.TORSO) {
+            continue;
+         }
+
          RagdollAssemblyHelper.RagdollJoint joint = entry.getValue();
          PhysicsConstraintHandle handle = joint.handle();
          if (handle == null || !handle.isValid()) {

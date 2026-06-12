@@ -74,7 +74,7 @@ public final class RagdollRegistry {
 
       RAGDOLL_BODY_IDS.add(ragdollBody.getUniqueId());
       UUID seatPlayerId = autoSeat ? player.getUUID() : null;
-      RagdollDeferredSync.queueLaunch(ragdollBody, linear, angular, seatPlayerId, ragdollPose);
+      RagdollDeferredSync.queueLaunch(ragdollBody, linear, angular, seatPlayerId, true);
       PLAYER_COOLDOWNS.put(player.getUUID(), level.getGameTime() + (long) RagdollSettings.cooldownTicks());
       SablePlayerRagdoll.LOGGER.info("[sable_player_ragdoll] queued ragdoll {} for {} (launch + sitDown next tick)",
          shortId(ragdollBody.getUniqueId()), player.getGameProfile().getName());

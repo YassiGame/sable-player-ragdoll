@@ -123,14 +123,6 @@ public final class RagdollAssemblyHelper {
       boolean suppressLegContacts,
       RagdollLimbOptions limbs
    ) {
-      for (PartSpawn part : PARTS) {
-         Vec3 center = baseCenter.add(right.scale(part.rightOffset())).add(up.scale(part.upOffset()));
-         int partY = BlockPos.containing(center).getY();
-         if (partY < level.getMinBuildHeight() || partY >= level.getMaxBuildHeight()) {
-            SablePlayerRagdoll.LOGGER.warn("[sable_player_ragdoll] ragdoll spawn aborted: part {} at Y={} outside world bounds [{}, {})", part.name(), partY, level.getMinBuildHeight(), level.getMaxBuildHeight());
-            return null;
-         }
-      }
       pruneInactiveConstraints();
       Map<BodyPart, SpawnedPart> spawnedParts = new EnumMap<>(BodyPart.class);
       Quaterniond orientation = orientationFromBasis(right, up, forward);
