@@ -26,6 +26,9 @@ public final class RagdollConfig {
    public static final BooleanValue ENABLED = BUILDER.translation("sable_player_ragdoll.configuration.enabled")
       .comment("Master switch for the ragdoll system.")
       .define("enabled", true);
+   public static final BooleanValue GRAB_ENABLED = BUILDER.translation("sable_player_ragdoll.configuration.grab_enabled")
+      .comment("Allow players to grab and drag ragdolls.")
+      .define("grabEnabled", true);
 
    static {
       BUILDER.translation("sable_player_ragdoll.configuration.trigger").comment("Ragdoll trigger behavior.").push("trigger");
@@ -61,6 +64,9 @@ public final class RagdollConfig {
    public static final DoubleValue RAGDOLL_MAX_LAUNCH_SPEED = BUILDER.translation("sable_player_ragdoll.configuration.ragdoll_max_launch_speed")
       .comment("Clamp total ragdoll launch speed (m/s).")
       .defineInRange("ragdollMaxLaunchSpeed", 128.0, 1.0, 256.0);
+   public static final BooleanValue PART_SELF_COLLISION = BUILDER.translation("sable_player_ragdoll.configuration.part_self_collision")
+      .comment("When true, the body parts of a ragdoll collide with each other.")
+      .define("partSelfCollision", true);
 
    static {
       BUILDER.pop();
@@ -160,11 +166,13 @@ public final class RagdollConfig {
 
    private static void apply() {
       RagdollSettings.setEnabled((Boolean) ENABLED.get());
+      RagdollSettings.setGrabEnabled((Boolean) GRAB_ENABLED.get());
       RagdollSettings.setMaxVelocityDelta((Double) MAX_VELOCITY_DELTA.get());
       RagdollSettings.setCooldownTicks((Integer) COOLDOWN_TICKS.get());
       RagdollSettings.setAffectCreative((Boolean) AFFECT_CREATIVE.get());
       RagdollSettings.setMaxFlingSpeed((Double) MAX_FLING_SPEED.get());
       RagdollSettings.setRagdollMaxLaunchSpeed((Double) RAGDOLL_MAX_LAUNCH_SPEED.get());
+      RagdollSettings.setPartSelfCollision((Boolean) PART_SELF_COLLISION.get());
       RagdollSettings.setImpactDamageEnabled((Boolean) IMPACT_DAMAGE_ENABLED.get());
       RagdollSettings.setImpactFeedbackThreshold((Double) IMPACT_FEEDBACK_THRESHOLD.get());
       RagdollSettings.setImpactDamageThreshold((Double) IMPACT_DAMAGE_THRESHOLD.get());

@@ -1,5 +1,6 @@
 package dev.leo.sableplayerragdoll.neoforge.client;
 
+import dev.leo.sableplayerragdoll.entity.RagdollSeatEntity;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.mixinhelpers.camera.new_camera_types.SableCameraTypes;
 import net.minecraft.client.CameraType;
@@ -52,6 +53,10 @@ public final class RagdollCameraHelper {
 
    private static void onRenderPlayer(RenderPlayerEvent.Pre event) {
       Minecraft minecraft = Minecraft.getInstance();
+      if (event.getEntity().getVehicle() instanceof RagdollSeatEntity) {
+         event.setCanceled(true);
+         return;
+      }
       if (suppressLocalPlayerRender && minecraft.player != null && event.getEntity() == minecraft.player) {
          event.setCanceled(true);
       }

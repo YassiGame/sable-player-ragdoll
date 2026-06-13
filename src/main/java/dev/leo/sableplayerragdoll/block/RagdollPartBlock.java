@@ -1,5 +1,6 @@
 package dev.leo.sableplayerragdoll.block;
 
+import dev.leo.sableplayerragdoll.RagdollCollisionRules;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
 import dev.ryanhcode.sable.api.block.BlockSubLevelCollisionShape;
@@ -54,7 +55,15 @@ public final class RagdollPartBlock extends Block implements EntityBlock, BlockS
 
    @Override
    protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+      if (RagdollCollisionRules.suppressLocalCollision()) {
+         return Shapes.empty();
+      }
       return collisionShape(state);
+   }
+
+   @Override
+   public boolean hasDynamicShape() {
+      return true;
    }
 
    @Override

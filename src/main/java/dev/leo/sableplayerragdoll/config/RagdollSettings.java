@@ -2,10 +2,12 @@ package dev.leo.sableplayerragdoll.config;
 
 public final class RagdollSettings {
    private static boolean enabled = true;
+   private static boolean grabEnabled = true;
    private static double minVelocityDelta = 15.0;
    private static double maxVelocityDelta = 120.0;
    private static double maxFlingSpeed = 128.0;
    private static double ragdollMaxLaunchSpeed = 128.0;
+   private static boolean partSelfCollision = true;
    private static boolean expireAfterDuration = false;
    private static int ragdollDurationTicks = 40;
    private static boolean expireAfterSafetyTimeout = false;
@@ -36,6 +38,9 @@ public final class RagdollSettings {
    public static boolean enabled() { return enabled; }
    public static void setEnabled(boolean v) { enabled = v; }
 
+   public static boolean grabEnabled() { return grabEnabled; }
+   public static void setGrabEnabled(boolean v) { grabEnabled = v; }
+
    public static double minVelocityDelta() { return minVelocityDelta; }
    public static void setMinVelocityDelta(double v) { minVelocityDelta = Math.max(0.1, v); }
 
@@ -47,6 +52,9 @@ public final class RagdollSettings {
 
    public static double ragdollMaxLaunchSpeed() { return ragdollMaxLaunchSpeed; }
    public static void setRagdollMaxLaunchSpeed(double v) { ragdollMaxLaunchSpeed = Math.max(0.5, v); }
+
+   public static boolean partSelfCollision() { return partSelfCollision; }
+   public static void setPartSelfCollision(boolean v) { partSelfCollision = v; }
 
    public static boolean expireAfterDuration() { return expireAfterDuration; }
    public static void setExpireAfterDuration(boolean v) { expireAfterDuration = v; }

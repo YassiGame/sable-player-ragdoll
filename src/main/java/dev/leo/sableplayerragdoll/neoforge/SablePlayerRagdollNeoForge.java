@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.authlib.yggdrasil.ProfileResult;
 import dev.leo.sableplayerragdoll.SablePlayerRagdoll;
 import dev.leo.sableplayerragdoll.RagdollItemTags;
+import dev.leo.sableplayerragdoll.RagdollGrabCallbacks;
 import dev.leo.sableplayerragdoll.RagdollSeatCallbacks;
 import dev.leo.sableplayerragdoll.RagdollSoundEvents;
 import dev.leo.sableplayerragdoll.api.PlayerlessDespawnRule;
@@ -133,6 +134,8 @@ public final class SablePlayerRagdollNeoForge {
          RagdollSoundEvents.bindRagdollSmallImpact(RagdollBlockRegistration.RAGDOLL_SMALL_IMPACT_SOUND.get());
          RagdollSeatCallbacks.setOnAutoSeated(RagdollNetworking::notifyAutoSeated);
          RagdollSeatCallbacks.setOnReleased(RagdollNetworking::notifyReleased);
+         RagdollGrabCallbacks.setOnGrabbed(RagdollNetworking::notifyGrabStarted);
+         RagdollGrabCallbacks.setOnReleased(RagdollNetworking::notifyGrabEnded);
          SablePlayerRagdollBootstrap.init();
       });
    }

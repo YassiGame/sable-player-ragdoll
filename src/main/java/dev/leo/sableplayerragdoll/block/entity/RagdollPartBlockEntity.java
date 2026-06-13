@@ -2,6 +2,7 @@ package dev.leo.sableplayerragdoll.block.entity;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import dev.leo.sableplayerragdoll.RagdollGrabCallbacks;
 import dev.leo.sableplayerragdoll.physics.RagdollAssemblyHelper;
 import dev.leo.sableplayerragdoll.physics.RagdollControlHelper;
 import dev.leo.sableplayerragdoll.physics.RagdollRegistry;
@@ -34,6 +35,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -50,6 +52,7 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
    private static final double GRAB_MAX_FORCE = 200.0;
    private static final double GRAB_HOLD_DISTANCE = 1.0;
    private static final double GRAB_ANCHOR_Y_OFFSET = -0.6;
+   private static final double GRAB_MAX_DISTANCE = 4.0;
    private BodyPart bodyPart = BodyPart.TORSO;
    @Nullable
    private UUID skinUuid;
@@ -129,12 +132,20 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
          return;
       }
 
+      Vector3d center = this.grabCenter();
       for (Iterator<Map.Entry<UUID, GrabConstraint>> it = this.grabbers.entrySet().iterator(); it.hasNext();) {
          Map.Entry<UUID, GrabConstraint> entry = it.next();
          Player player = this.level.getPlayerByUUID(entry.getKey());
-         if (player == null || player.isDeadOrDying() || player.isSpectator()) {
+         boolean invalid = player == null || player.isDeadOrDying() || player.isSpectator();
+         if (!invalid) {
+            double distanceSq = Sable.HELPER.distanceSquaredWithSubLevels(
+               this.level, JOMLConversion.toJOML(player.getEyePosition()), center);
+            invalid = distanceSq > GRAB_MAX_DISTANCE * GRAB_MAX_DISTANCE;
+         }
+         if (invalid) {
             entry.getValue().removeJoint();
             it.remove();
+            this.notifyReleased(entry.getKey());
             this.setChanged();
          }
       }
@@ -142,9 +153,18 @@ public final class RagdollPartBlockEntity extends BlockEntity implements BlockEn
 
    private void removeAllGrabbers() {
       if (!this.grabbers.isEmpty()) {
-         this.grabbers.values().forEach(GrabConstraint::removeJoint);
+         for (Map.Entry<UUID, GrabConstraint> entry : this.grabbers.entrySet()) {
+            entry.getValue().removeJoint();
+            this.notifyReleased(entry.getKey());
+         }
          this.grabbers.clear();
          this.setChanged();
+      }
+   }
+
+   private void notifyReleased(UUID playerId) {
+      if (this.level != null && this.level.getPlayerByUUID(playerId) instanceof ServerPlayer serverPlayer) {
+         RagdollGrabCallbacks.notifyReleased(serverPlayer);
       }
    }
 

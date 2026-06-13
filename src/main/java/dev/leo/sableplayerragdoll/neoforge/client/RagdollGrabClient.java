@@ -1,5 +1,6 @@
 package dev.leo.sableplayerragdoll.neoforge.client;
 
+import dev.leo.sableplayerragdoll.RagdollCollisionRules;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity;
 import dev.leo.sableplayerragdoll.neoforge.network.RagdollGrabPacket;
 import javax.annotation.Nullable;
@@ -26,6 +27,11 @@ public final class RagdollGrabClient {
    public static void init() {
       NeoForge.EVENT_BUS.addListener(RagdollGrabClient::onClientTick);
       NeoForge.EVENT_BUS.addListener(RagdollGrabClient::onScroll);
+      RagdollCollisionRules.setLocalGrabActive(RagdollGrabClient::isGrabbing);
+   }
+
+   public static boolean isGrabbing() {
+      return activePos != null;
    }
 
    private static void onClientTick(Post event) {
@@ -63,6 +69,10 @@ public final class RagdollGrabClient {
          PacketDistributor.sendToServer(new RagdollGrabPacket(activePos, true), new CustomPacketPayload[0]);
          activePos = null;
       }
+   }
+
+   public static void clearActive() {
+      activePos = null;
    }
 
    @Nullable

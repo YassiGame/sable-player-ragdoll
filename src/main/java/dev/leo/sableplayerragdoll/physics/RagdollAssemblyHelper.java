@@ -8,6 +8,7 @@ import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity;
 import dev.leo.sableplayerragdoll.api.RagdollLimbConfig;
 import dev.leo.sableplayerragdoll.api.RagdollLimbOptions;
 import dev.leo.sableplayerragdoll.block.entity.RagdollPartBlockEntity.BodyPart;
+import dev.leo.sableplayerragdoll.config.RagdollSettings;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
 import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
@@ -408,6 +409,7 @@ public final class RagdollAssemblyHelper {
             Set.of(ConstraintJointAxis.LINEAR_X, ConstraintJointAxis.LINEAR_Y, ConstraintJointAxis.LINEAR_Z)
          );
          PhysicsConstraintHandle handle = physicsSystem.getPipeline().addConstraint(first.subLevel(), second.subLevel(), config);
+         handle.setContactsEnabled(RagdollSettings.partSelfCollision());
          ACTIVE_CONSTRAINTS.add(handle);
          if (headId != null) {
             JOINTS_BY_HEAD.computeIfAbsent(headId, unused -> new EnumMap<>(BodyPart.class))

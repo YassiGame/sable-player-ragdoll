@@ -1,7 +1,9 @@
 package dev.leo.sableplayerragdoll.neoforge.network;
 
+import dev.leo.sableplayerragdoll.neoforge.client.RagdollGrabClient;
 import dev.leo.sableplayerragdoll.neoforge.client.RagdollGrabState;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.client.Minecraft;
 import java.util.UUID;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -34,6 +36,9 @@ public record RagdollGrabSyncPacket(UUID playerId, boolean grabbing) implements 
             RagdollGrabState.add(packet.playerId());
          } else {
             RagdollGrabState.remove(packet.playerId());
+            if (Minecraft.getInstance().player != null && Minecraft.getInstance().player.getUUID().equals(packet.playerId())) {
+               RagdollGrabClient.clearActive();
+            }
          }
       });
    }
